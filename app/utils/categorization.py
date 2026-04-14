@@ -131,56 +131,27 @@ def clean_merchant_name(description: str) -> str:
 def categorize_transaction(
     description: str,
     merchant_name: Optional[str] = None,
-    use_ml: bool = True
+    use_ml: bool = False,  # ML removed — use CategoryEngine instead
 ) -> str:
     """
-    Automatically categorize a transaction using ML + rule-based fallback.
-
-    This function tries ML prediction first (if trained), then falls back
-    to rule-based pattern matching if ML confidence is low or model not available.
+    Rule-based fallback categorizer.
+    For intelligent categorization use CategoryEngine (app/services/category_engine.py).
 
     Args:
         description: Transaction description
         merchant_name: Optional pre-extracted merchant name
-        use_ml: Whether to use ML prediction (default: True)
+        use_ml: Ignored (ML removed — use CategoryEngine for AI categorization)
 
     Returns:
         Category name or "Other" if no match found
-
-    Example:
-        categorize_transaction("SWIGGY *FOOD ORDER") -> "Food & Dining"
-        categorize_transaction("AMAZON INDIA") -> "Shopping & Retail"
     """
-    # Try ML prediction first if enabled
-    if use_ml:
-        try:
-            from app.ml.categorizer import get_categorizer
-
-            categorizer = get_categorizer()
-            ml_category, confidence = categorizer.predict_category(
-                description,
-                merchant_name,
-                min_confidence=0.4  # 40% confidence threshold
-            )
-
-            if ml_category:
-                # ML prediction is confident enough
-                return ml_category
-        except Exception as e:
-            # ML failed, fall back to rules
-            print(f"ML prediction failed, using rules: {e}")
-
-    # Fall back to rule-based categorization
-    # Use merchant name if provided, otherwise use description
     text_to_check = (merchant_name or description).lower()
 
-    # Check against category patterns
     for category, patterns in MERCHANT_CATEGORIES.items():
         for pattern in patterns:
             if pattern.lower() in text_to_check:
                 return category
 
-    # Default category
     return "Other"
 
 

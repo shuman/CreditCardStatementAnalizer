@@ -1,122 +1,172 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="px-4 sm:px-0">
-    <h1 class="text-3xl font-bold text-gray-900 mb-2">
-        <i class="fas fa-upload text-blue-600"></i>
-        Upload Credit Card Statement
-    </h1>
-    <p class="text-gray-600 mb-8">
-        Upload your credit card statement PDF to extract and analyze transactions automatically.
-    </p>
+<div class="px-4 sm:px-0 max-w-3xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-gray-900">Upload Statement</h1>
+        <p class="text-gray-500 mt-1 text-sm">Upload a credit card statement PDF. Claude AI will read and categorize every transaction.</p>
+    </div>
 
     <!-- Upload Form -->
-    <div class="bg-white shadow-md rounded-lg p-6">
-        <form id="uploadForm" class="space-y-6">
+    <div class="bg-white shadow-sm border border-gray-100 rounded-2xl p-6">
+        <form id="uploadForm" class="space-y-5">
+
             <!-- Drag & Drop Zone -->
-            <div class="drag-drop-zone rounded-lg p-8 text-center cursor-pointer" id="dropZone">
-                <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
-                <p class="text-lg text-gray-700 mb-2">Drag and drop your PDF here</p>
-                <p class="text-sm text-gray-500 mb-4">or click to browse</p>
+            <div class="drag-drop-zone rounded-xl p-8 text-center cursor-pointer border-2 border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 transition-colors" id="dropZone">
+                <i class="fas fa-file-pdf text-4xl text-gray-200 mb-3"></i>
+                <p class="text-sm font-medium text-gray-600 mb-1">Drag & drop your PDF here</p>
+                <p class="text-xs text-gray-400 mb-4">or click to browse</p>
                 <input type="file" id="fileInput" name="file" accept=".pdf" class="hidden" required>
-                <button type="button" onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                <button type="button" onclick="document.getElementById('fileInput').click()"
+                        class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-sm">
                     <i class="fas fa-folder-open mr-2"></i>Select File
                 </button>
             </div>
 
-            <!-- Selected File Display -->
-            <div id="fileInfo" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <!-- Selected File -->
+            <div id="fileInfo" class="hidden bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3">
                 <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <i class="fas fa-file-pdf text-red-500 text-2xl mr-3"></i>
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-file-pdf text-red-500 text-2xl"></i>
                         <div>
-                            <p class="font-medium text-gray-900" id="fileName"></p>
-                            <p class="text-sm text-gray-600" id="fileSize"></p>
+                            <p class="font-medium text-gray-900 text-sm" id="fileName"></p>
+                            <p class="text-xs text-gray-500" id="fileSize"></p>
                         </div>
                     </div>
-                    <button type="button" onclick="clearFile()" class="text-red-600 hover:text-red-800">
+                    <button type="button" onclick="clearFile()" class="text-gray-400 hover:text-red-600">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Password Field -->
+            <!-- PDF Password -->
             <div>
-                <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="fas fa-lock mr-1"></i>PDF Password (if protected)
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
+                    <i class="fas fa-lock text-gray-400 mr-1"></i>PDF Password
+                    <span class="font-normal text-gray-400">(if protected)</span>
                 </label>
                 <input type="password" id="password" name="password"
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                        placeholder="Leave blank if not password protected">
-                <p class="mt-1 text-sm text-gray-500">Enter the password if your PDF is encrypted</p>
             </div>
 
-            <!-- Bank Selection -->
-            <div>
-                <label for="bank_name" class="block text-sm font-medium text-gray-700 mb-2">
-                    <i class="fas fa-university mr-1"></i>Bank
-                </label>
-                <select id="bank_name" name="bank_name"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option value="Amex" selected>American Express (Amex)</option>
-                </select>
-                <p class="mt-1 text-sm text-gray-500">Select your bank (more banks coming soon)</p>
-            </div>
-
-            <!-- Submit Button -->
-            <div class="flex items-center justify-between">
-                <button type="submit" id="submitBtn"
-                        class="bg-green-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                    <i class="fas fa-check-circle mr-2"></i>Upload & Process
-                </button>
-                <div id="processing" class="hidden flex items-center text-blue-600">
-                    <i class="fas fa-spinner fa-spin mr-2"></i>
-                    <span>Processing...</span>
+            <!-- Extraction Method Toggle -->
+            <div class="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl p-4">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1 min-w-0 pr-4">
+                        <p class="text-sm font-semibold text-gray-800 mb-0.5">
+                            <i class="fas fa-robot text-purple-600 mr-1"></i>AI Extraction
+                            <span id="aiStatusBadge" class="ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-600 text-white font-medium">ON</span>
+                        </p>
+                        <p class="text-xs text-gray-500 mb-2" id="aiStatusDesc">
+                            Sends the PDF to Claude for extraction. Turn off to use regex parsing only.
+                        </p>
+                        <!-- Model selector -->
+                        <div class="flex items-center gap-2 mb-3" id="modelSelectorRow">
+                            <label class="text-xs font-medium text-gray-600">Model:</label>
+                            <select id="modelSelect" class="text-xs border border-purple-200 rounded-lg px-2 py-1 bg-white focus:ring-1 focus:ring-purple-400">
+                                <option value="claude-haiku-4-5" selected>Haiku — fast &amp; cheap (default)</option>
+                                <option value="claude-sonnet-4-5">Sonnet — most accurate (higher cost)</option>
+                            </select>
+                        </div>
+                        <!-- Cache reuse (AI only) -->
+                        <div id="cacheOptionRow" class="flex items-start gap-3 pt-2 border-t border-purple-100/80">
+                            <input type="checkbox" id="useExtractionCache" checked
+                                   class="mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <div class="min-w-0">
+                                <label for="useExtractionCache" class="text-xs font-medium text-gray-700 cursor-pointer">
+                                    Use cached extraction when available
+                                </label>
+                                <p class="text-xs text-gray-500 mt-0.5">
+                                    If you uploaded this exact PDF before, reuse the saved result (no Claude API call).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer mt-0.5 shrink-0">
+                        <input type="checkbox" id="useClaudeVision" checked class="sr-only peer">
+                        <div class="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:bg-purple-600 after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                    </label>
                 </div>
             </div>
+
+            <!-- Submit -->
+            <button type="submit" id="submitBtn"
+                    class="w-full bg-indigo-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm shadow-sm">
+                <i class="fas fa-search-dollar mr-2"></i>Analyse Statement
+            </button>
         </form>
 
-        <!-- Status Messages -->
-        <div id="successMessage" class="hidden mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
-            <div class="flex items-start">
-                <i class="fas fa-check-circle text-green-500 text-xl mt-0.5 mr-3"></i>
-                <div class="flex-1">
-                    <h3 class="font-medium text-green-900">Success!</h3>
-                    <p class="text-sm text-green-700 mt-1" id="successText"></p>
-                    <a href="/statements" class="inline-block mt-3 text-green-700 font-medium hover:text-green-900">
-                        View Statement <i class="fas fa-arrow-right ml-1"></i>
-                    </a>
+        <!-- Processing Pipeline -->
+        <div id="pipelinePanel" class="hidden mt-6 border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm">
+            <div class="bg-gray-50/50 px-4 py-3 border-b border-gray-100">
+                <p class="text-sm font-semibold text-gray-700">
+                    <i class="fas fa-cogs text-indigo-500 mr-2"></i>Processing Pipeline
+                </p>
+            </div>
+            <div class="divide-y divide-gray-50">
+                <div class="pipeline-step px-4 py-3 flex items-center gap-3" id="step-upload">
+                    <div class="step-icon w-7 h-7 rounded-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs shrink-0">
+                        <i class="fas fa-upload"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-700">Uploading file</p>
+                        <p class="text-xs text-gray-400 step-detail">Sending PDF to server</p>
+                    </div>
+                    <span class="step-badge text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Pending</span>
+                </div>
+                <div class="pipeline-step px-4 py-3 flex items-center gap-3" id="step-classify">
+                    <div class="step-icon w-7 h-7 rounded-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs shrink-0">
+                        <i class="fas fa-th-list"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-700">Local validation</p>
+                        <p class="text-xs text-gray-400 step-detail">PDF text extracted, pages classified — no API cost</p>
+                    </div>
+                    <span class="step-badge text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Pending</span>
+                </div>
+                <div class="pipeline-step px-4 py-3 flex items-center gap-3" id="step-extract">
+                    <div class="step-icon w-7 h-7 rounded-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs shrink-0">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-700" id="step-extract-label">Claude AI extraction</p>
+                        <p class="text-xs text-gray-400 step-detail">Only called after local validation confirms data exists</p>
+                    </div>
+                    <span class="step-badge text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Pending</span>
+                </div>
+                <div class="pipeline-step px-4 py-3 flex items-center gap-3" id="step-categorize">
+                    <div class="step-icon w-7 h-7 rounded-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs shrink-0">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-700">Smart categorisation</p>
+                        <p class="text-xs text-gray-400 step-detail">Matching merchants to categories using rules + AI</p>
+                    </div>
+                    <span class="step-badge text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Pending</span>
+                </div>
+                <div class="pipeline-step px-4 py-3 flex items-center gap-3" id="step-preview">
+                    <div class="step-icon w-7 h-7 rounded-full flex items-center justify-center bg-gray-100 text-gray-400 text-xs shrink-0">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-700">Preview ready</p>
+                        <p class="text-xs text-gray-400 step-detail">Review and override before saving</p>
+                    </div>
+                    <span class="step-badge text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Pending</span>
                 </div>
             </div>
         </div>
 
-        <div id="errorMessage" class="hidden mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
-            <div class="flex items-start">
-                <i class="fas fa-exclamation-circle text-red-500 text-xl mt-0.5 mr-3"></i>
-                <div class="flex-1">
-                    <h3 class="font-medium text-red-900">Error</h3>
-                    <p class="text-sm text-red-700 mt-1" id="errorText"></p>
+        <!-- Error -->
+        <div id="errorMessage" class="hidden mt-4 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-exclamation-circle text-red-500 mt-0.5"></i>
+                <div>
+                    <p class="font-medium text-red-800 text-sm">Error</p>
+                    <p class="text-red-700 text-sm mt-0.5" id="errorText"></p>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Features Section -->
-    <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white p-6 rounded-lg shadow">
-            <i class="fas fa-file-pdf text-red-500 text-3xl mb-3"></i>
-            <h3 class="font-bold text-lg mb-2">PDF Processing</h3>
-            <p class="text-gray-600 text-sm">Automatically extract data from password-protected PDF statements</p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow">
-            <i class="fas fa-tags text-blue-500 text-3xl mb-3"></i>
-            <h3 class="font-bold text-lg mb-2">Smart Categorization</h3>
-            <p class="text-gray-600 text-sm">Transactions automatically categorized by merchant type</p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow">
-            <i class="fas fa-chart-pie text-green-500 text-3xl mb-3"></i>
-            <h3 class="font-bold text-lg mb-2">Analytics</h3>
-            <p class="text-gray-600 text-sm">Comprehensive spending analysis and insights</p>
         </div>
     </div>
 </div>
@@ -124,124 +174,205 @@
 
 {% block extra_scripts %}
 <script>
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
-    const fileInfo = document.getElementById('fileInfo');
-    const uploadForm = document.getElementById('uploadForm');
-    const submitBtn = document.getElementById('submitBtn');
-    const processing = document.getElementById('processing');
-    const successMessage = document.getElementById('successMessage');
-    const errorMessage = document.getElementById('errorMessage');
+const dropZone     = document.getElementById('dropZone');
+const fileInput    = document.getElementById('fileInput');
+const fileInfo     = document.getElementById('fileInfo');
+const uploadForm   = document.getElementById('uploadForm');
+const submitBtn    = document.getElementById('submitBtn');
+const pipelinePanel = document.getElementById('pipelinePanel');
+const errorMessage = document.getElementById('errorMessage');
+const visionToggle = document.getElementById('useClaudeVision');
+const cacheCheckbox = document.getElementById('useExtractionCache');
+const cacheOptionRow = document.getElementById('cacheOptionRow');
 
-    // Drag and drop handlers
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-    });
+// --- AI toggle + cache row (cache only applies when AI is on) ---
+function syncAiUi() {
+    const badge    = document.getElementById('aiStatusBadge');
+    const desc     = document.getElementById('aiStatusDesc');
+    const modelRow = document.getElementById('modelSelectorRow');
+    const extractLabel = document.getElementById('step-extract-label');
+    if (visionToggle.checked) {
+        badge.textContent = 'ON';
+        badge.className = 'ml-2 text-xs px-2 py-0.5 rounded-full bg-purple-600 text-white font-medium';
+        desc.textContent = 'Sends the PDF to Claude for extraction. Turn off to use regex parsing only.';
+        extractLabel.textContent = 'Claude AI extraction';
+        modelRow.classList.remove('hidden');
+        cacheCheckbox.disabled = false;
+        cacheOptionRow.classList.remove('opacity-50', 'pointer-events-none');
+    } else {
+        badge.textContent = 'OFF';
+        badge.className = 'ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-400 text-white font-medium';
+        desc.textContent = 'Regex parser will be used instead (Amex-only, no AI cost).';
+        extractLabel.textContent = 'Regex parser extraction';
+        modelRow.classList.add('hidden');
+        cacheCheckbox.disabled = true;
+        cacheOptionRow.classList.add('opacity-50', 'pointer-events-none');
+    }
+}
+visionToggle.addEventListener('change', syncAiUi);
+syncAiUi();
 
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('dragover');
-    });
+// --- Drag & drop ---
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('border-indigo-400', 'bg-indigo-50/50'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-400', 'bg-indigo-50/50'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('border-indigo-400', 'bg-indigo-50/50');
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].name.toLowerCase().endsWith('.pdf')) {
+        setFile(files[0]);
+    } else {
+        showError('Please drop a PDF file.');
+    }
+});
+fileInput.addEventListener('change', e => { if (e.target.files.length > 0) setFile(e.target.files[0]); });
 
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
+function setFile(file) {
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatBytes(file.size);
+    fileInfo.classList.remove('hidden');
+    errorMessage.classList.add('hidden');
+}
+function clearFile() { fileInput.value = ''; fileInfo.classList.add('hidden'); }
+function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(2) + ' MB';
+}
 
-        const files = e.dataTransfer.files;
-        if (files.length > 0 && files[0].type === 'application/pdf') {
-            fileInput.files = files;
-            displayFileInfo(files[0]);
-        } else {
-            showError('Please drop a PDF file');
+// --- Pipeline step helpers ---
+function stepRunning(id, detail) {
+    const el = document.getElementById(id);
+    el.querySelector('.step-icon').className = 'step-icon w-7 h-7 rounded-full flex items-center justify-center bg-indigo-100 text-indigo-600 text-xs shrink-0';
+    el.querySelector('.step-icon').innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    el.querySelector('.step-badge').className = 'step-badge text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700';
+    el.querySelector('.step-badge').textContent = 'Running…';
+    if (detail) el.querySelector('.step-detail').textContent = detail;
+}
+function stepDone(id, detail) {
+    const el = document.getElementById(id);
+    el.querySelector('.step-icon').className = 'step-icon w-7 h-7 rounded-full flex items-center justify-center bg-green-100 text-green-600 text-xs shrink-0';
+    el.querySelector('.step-icon').innerHTML = '<i class="fas fa-check"></i>';
+    el.querySelector('.step-badge').className = 'step-badge text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700';
+    el.querySelector('.step-badge').textContent = 'Done';
+    if (detail) el.querySelector('.step-detail').textContent = detail;
+}
+function stepWarn(id, detail) {
+    const el = document.getElementById(id);
+    el.querySelector('.step-icon').className = 'step-icon w-7 h-7 rounded-full flex items-center justify-center bg-yellow-100 text-yellow-600 text-xs shrink-0';
+    el.querySelector('.step-icon').innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+    el.querySelector('.step-badge').className = 'step-badge text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700';
+    el.querySelector('.step-badge').textContent = 'Fallback';
+    if (detail) el.querySelector('.step-detail').textContent = detail;
+}
+
+// --- Form submit ---
+uploadForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!fileInput.files || fileInput.files.length === 0) { showError('Please select a PDF file.'); return; }
+
+    errorMessage.classList.add('hidden');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Analysing…';
+    pipelinePanel.classList.remove('hidden');
+
+    // Step 1: upload
+    stepRunning('step-upload', 'Reading file…');
+    await tick();
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('password', document.getElementById('password').value);
+    formData.append('use_claude_vision', visionToggle.checked ? 'true' : 'false');
+    formData.append('extraction_model', document.getElementById('modelSelect').value);
+    formData.append('use_extraction_cache', cacheCheckbox.checked ? 'true' : 'false');
+
+    stepDone('step-upload', fileInput.files[0].name);
+
+    // Step 2: classify (happens server-side, show as running while waiting)
+    stepRunning('step-classify', 'Detecting bank / institution…');
+    const extractMsg = !visionToggle.checked
+        ? 'Parsing PDF with regex…'
+        : (cacheCheckbox.checked
+            ? 'Checking cache or sending PDF to Claude — this may take 20–40 seconds…'
+            : 'Running fresh Claude extraction (cache bypassed)…');
+    stepRunning('step-extract', extractMsg);
+    await tick();
+
+    let data;
+    try {
+        const response = await fetch('/api/upload/preview', { method: 'POST', body: formData });
+        data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.detail || 'Server error');
         }
-    });
-
-    // File input change handler
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            displayFileInfo(e.target.files[0]);
-        }
-    });
-
-    // Display file info
-    function displayFileInfo(file) {
-        document.getElementById('fileName').textContent = file.name;
-        document.getElementById('fileSize').textContent = formatFileSize(file.size);
-        fileInfo.classList.remove('hidden');
+    } catch (err) {
+        showError(err.message);
+        resetForm();
+        return;
     }
 
-    // Clear file
-    function clearFile() {
-        fileInput.value = '';
-        fileInfo.classList.add('hidden');
+    // Show results from pipeline
+    const meta = data.extraction_meta || {};
+    const method = data.extraction_method || 'regex_fallback';
+    const txnCount = (data.transactions || []).length;
+
+    // Classify / validation step
+    const pf = meta.preflight || {};
+    const pfRows = pf.approx_rows || 0;
+    const pfData = pf.data_pages || meta.pages_processed || 0;
+    const pfSkip = pf.skipped_pages || meta.pages_skipped || 0;
+    const pfIssues = (pf.issues || []).length;
+    let classifyDetail = pfData
+        ? `${pfData} data page(s), ${pfSkip} skipped, ~${pfRows} transaction rows detected locally`
+        : `${meta.pages_processed || 0} pages to extract, ${meta.pages_skipped || 0} skipped`;
+    if (pfIssues > 0) {
+        stepWarn('step-classify', classifyDetail + ` · ${pfIssues} warning(s)`);
+    } else {
+        stepDone('step-classify', classifyDetail);
     }
 
-    // Format file size
-    function formatFileSize(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    // Extract step
+    if (method === 'claude_vision' && meta.from_cache) {
+        const el = document.getElementById('step-extract');
+        el.querySelector('.step-icon').className = 'step-icon w-7 h-7 rounded-full flex items-center justify-center bg-green-100 text-green-600 text-xs shrink-0';
+        el.querySelector('.step-icon').innerHTML = '<i class="fas fa-bolt"></i>';
+        el.querySelector('.step-badge').className = 'step-badge text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700';
+        el.querySelector('.step-badge').textContent = 'Cached';
+        const savedStr = meta.original_cost_usd ? ` · saved $${meta.original_cost_usd.toFixed(4)}` : '';
+        el.querySelector('.step-detail').textContent = `Loaded from cache — no API call made${savedStr}`;
+    } else if (method === 'claude_vision') {
+        const costStr = meta.cost_usd ? `$${meta.cost_usd.toFixed(4)}` : '';
+        const tokStr = meta.input_tokens ? `${((meta.input_tokens + meta.output_tokens)/1000).toFixed(1)}k tokens` : '';
+        stepDone('step-extract', [meta.model, tokStr, costStr].filter(Boolean).join(' · '));
+    } else if (meta.fallback_reason) {
+        stepWarn('step-extract', `AI failed, used regex fallback: ${meta.fallback_reason.substring(0,80)}`);
+    } else {
+        stepDone('step-extract', 'Regex parser completed');
     }
 
-    // Form submission
-    uploadForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    // Categorise step
+    stepDone('step-categorize', `${txnCount} transactions categorised`);
+    stepDone('step-preview', 'Ready — redirecting…');
 
-        // Hide messages
-        successMessage.classList.add('hidden');
-        errorMessage.classList.add('hidden');
+    // Store and redirect
+    sessionStorage.setItem('previewData', JSON.stringify(data));
+    setTimeout(() => { window.location.href = '/preview'; }, 600);
+});
 
-        // Check file
-        if (!fileInput.files || fileInput.files.length === 0) {
-            showError('Please select a PDF file');
-            return;
-        }
+async function tick() { return new Promise(r => setTimeout(r, 0)); }
 
-        // Show processing
-        submitBtn.disabled = true;
-        processing.classList.remove('hidden');
+function resetForm() {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="fas fa-search-dollar mr-2"></i>Analyse Statement';
+}
 
-        // Prepare form data
-        const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
-        formData.append('password', document.getElementById('password').value);
-        formData.append('bank_name', document.getElementById('bank_name').value);
-
-        try {
-            // Use preview endpoint instead of direct upload
-            const response = await fetch('/api/upload/preview', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                // Store preview data and redirect to preview page
-                sessionStorage.setItem('previewData', JSON.stringify(data));
-                window.location.href = '/preview';
-            } else {
-                showError(data.detail || 'Error processing statement');
-                submitBtn.disabled = false;
-                processing.classList.add('hidden');
-            }
-        } catch (error) {
-            showError('Network error: ' + error.message);
-            submitBtn.disabled = false;
-            processing.classList.add('hidden');
-        }
-    });
-
-    function showSuccess(message) {
-        document.getElementById('successText').textContent = message;
-        successMessage.classList.remove('hidden');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function showError(message) {
-        document.getElementById('errorText').textContent = message;
-        errorMessage.classList.remove('hidden');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+function showError(msg) {
+    document.getElementById('errorText').textContent = msg;
+    errorMessage.classList.remove('hidden');
+    resetForm();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 </script>
 {% endblock %}

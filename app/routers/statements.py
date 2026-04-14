@@ -25,7 +25,12 @@ class StatementSummary(BaseModel):
     id: int
     filename: str
     bank_name: str
+    card_type: Optional[str] = None
+    account_number: str
     statement_date: Optional[date]
+    statement_period_from: Optional[date] = None
+    statement_period_to: Optional[date] = None
+    payment_due_date: Optional[date] = None
     total_amount_due: Optional[Decimal]
     new_balance: Optional[Decimal]
     credit_utilization_pct: Optional[Decimal]
@@ -81,7 +86,12 @@ async def list_statements(
             "id": stmt.id,
             "filename": stmt.filename,
             "bank_name": stmt.bank_name,
+            "card_type": stmt.card_type,
+            "account_number": stmt.account_number,
             "statement_date": stmt.statement_date,
+            "statement_period_from": stmt.statement_period_from,
+            "statement_period_to": stmt.statement_period_to,
+            "payment_due_date": stmt.payment_due_date,
             "total_amount_due": stmt.total_amount_due,
             "new_balance": stmt.new_balance,
             "credit_utilization_pct": stmt.credit_utilization_pct,

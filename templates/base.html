@@ -3,10 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{{ title }}{% endblock %} - Credit Card Statement Analyzer</title>
+    <title>{% block title %}{{ title }}{% endblock %} - Statement Analyzer</title>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <!-- Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,45 +28,98 @@
     {% block extra_head %}{% endblock %}
 
     <style>
-        /* Custom styles */
-        .drag-drop-zone {
-            border: 2px dashed #cbd5e0;
-            transition: all 0.3s ease;
-        }
-        .drag-drop-zone.dragover {
-            border-color: #4299e1;
-            background-color: #ebf8ff;
-        }
+        .drag-drop-zone { border: 2px dashed #cbd5e0; transition: all 0.3s ease; }
+        .drag-drop-zone.dragover { border-color: #4299e1; background-color: #ebf8ff; }
+
+        /* Navbar active pill */
+        .nav-link { position: relative; transition: all 0.15s ease; }
+        .nav-link:hover { background: rgba(99,102,241,0.06); }
+        .nav-link.active { background: rgba(99,102,241,0.08); color: #4f46e5; font-weight: 600; }
+        .nav-link.active .nav-icon { color: #6366f1; }
+
+        /* Subtle page transition */
+        main { animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Mobile menu slide */
+        .mobile-menu { transition: transform 0.25s ease, opacity 0.2s ease; }
+        .mobile-menu.closed { transform: scaleY(0.95) translateY(-8px); opacity: 0; pointer-events: none; }
+        .mobile-menu.open { transform: scaleY(1) translateY(0); opacity: 1; pointer-events: auto; }
     </style>
 </head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-white shadow-lg">
+<body class="bg-slate-50 text-gray-800 font-sans antialiased">
+
+    <!-- Top Navigation Bar -->
+    <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/60">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex">
-                    <div class="flex-shrink-0 flex items-center">
-                        <i class="fas fa-credit-card text-blue-600 text-2xl mr-2"></i>
-                        <span class="font-bold text-xl text-gray-800">Statement Analyzer</span>
+            <div class="flex items-center justify-between h-14">
+
+                <!-- Logo (icon only, navigates home with refresh) -->
+                <a href="/" class="flex items-center gap-2.5 group" title="Home">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+                        <i class="fas fa-credit-card text-white text-sm"></i>
                     </div>
-                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-                        <a href="/" class="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            <i class="fas fa-upload mr-2"></i>Upload
-                        </a>
-                        <a href="/statements" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            <i class="fas fa-file-invoice mr-2"></i>Statements
-                        </a>
-                        <a href="/transactions" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            <i class="fas fa-receipt mr-2"></i>Transactions
-                        </a>
-                        <a href="/analytics" class="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                            <i class="fas fa-chart-line mr-2"></i>Analytics
-                        </a>
-                    </div>
-                </div>
+                </a>
+
+                <!-- Desktop Navigation -->
+                <nav class="hidden md:flex items-center gap-1">
+                    <a href="/" data-nav="/" class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
+                        <i class="fas fa-cloud-upload-alt text-xs nav-icon"></i>
+                        <span>Upload</span>
+                    </a>
+                    <a href="/statements" data-nav="/statements" class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
+                        <i class="fas fa-file-invoice text-xs nav-icon"></i>
+                        <span>Statements</span>
+                    </a>
+                    <a href="/transactions" data-nav="/transactions" class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
+                        <i class="fas fa-receipt text-xs nav-icon"></i>
+                        <span>Transactions</span>
+                    </a>
+                    <a href="/reports" data-nav="/reports" class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
+                        <i class="fas fa-chart-pie text-xs nav-icon"></i>
+                        <span>Reports</span>
+                    </a>
+                    <a href="/accounts" data-nav="/accounts" class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
+                        <i class="fas fa-id-card text-xs nav-icon"></i>
+                        <span>Accounts</span>
+                    </a>
+                    <a href="/advisor" data-nav="/advisor" class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
+                        <i class="fas fa-robot text-xs nav-icon"></i>
+                        <span>Advisor</span>
+                    </a>
+                </nav>
+
+                <!-- Mobile hamburger -->
+                <button id="mobileMenuBtn" class="md:hidden p-2 -mr-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors" aria-label="Menu">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
             </div>
         </div>
-    </nav>
+
+        <!-- Mobile dropdown menu -->
+        <div id="mobileMenu" class="mobile-menu closed md:hidden border-t border-gray-100 bg-white/95 backdrop-blur-lg">
+            <div class="max-w-7xl mx-auto px-4 py-2 space-y-0.5">
+                <a href="/" data-nav="/" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-cloud-upload-alt w-4 text-center nav-icon"></i>Upload
+                </a>
+                <a href="/statements" data-nav="/statements" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-file-invoice w-4 text-center nav-icon"></i>Statements
+                </a>
+                <a href="/transactions" data-nav="/transactions" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-receipt w-4 text-center nav-icon"></i>Transactions
+                </a>
+                <a href="/reports" data-nav="/reports" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-chart-pie w-4 text-center nav-icon"></i>Reports
+                </a>
+                <a href="/accounts" data-nav="/accounts" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-id-card w-4 text-center nav-icon"></i>Accounts
+                </a>
+                <a href="/advisor" data-nav="/advisor" class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-robot w-4 text-center nav-icon"></i>Advisor
+                </a>
+            </div>
+        </div>
+    </header>
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -60,13 +127,45 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white mt-12">
-        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <p class="text-center text-gray-500 text-sm">
-                © 2025 Credit Card Statement Analyzer. Built with FastAPI & Python.
-            </p>
+    <footer class="border-t border-gray-100 mt-16">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p class="text-xs text-gray-400">Statement Analyzer &middot; Built with FastAPI &amp; Python</p>
+            <p class="text-xs text-gray-400">&copy; 2025</p>
         </div>
     </footer>
+
+    <!-- Navbar active state + mobile menu -->
+    <script>
+    (function() {
+        // Highlight active nav link
+        const path = window.location.pathname;
+        // Handle /statements/123 sub-routes too
+        document.querySelectorAll('.nav-link').forEach(link => {
+            const navPath = link.getAttribute('data-nav');
+            if (navPath && (path === navPath || (navPath !== '/' && path.startsWith(navPath)))) {
+                link.classList.add('active');
+            }
+        });
+
+        // Mobile menu toggle
+        const btn = document.getElementById('mobileMenuBtn');
+        const menu = document.getElementById('mobileMenu');
+        let isOpen = false;
+        btn.addEventListener('click', () => {
+            isOpen = !isOpen;
+            menu.classList.toggle('open', isOpen);
+            menu.classList.toggle('closed', !isOpen);
+            btn.querySelector('i').className = isOpen ? 'fas fa-times text-lg' : 'fas fa-bars text-lg';
+        });
+        // Close on nav click
+        menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+            isOpen = false;
+            menu.classList.add('closed');
+            menu.classList.remove('open');
+            btn.querySelector('i').className = 'fas fa-bars text-lg';
+        }));
+    })();
+    </script>
 
     {% block extra_scripts %}{% endblock %}
 </body>

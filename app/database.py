@@ -1,10 +1,14 @@
 """
 Database configuration and session management.
+Uses Alembic for migrations on startup (run_migrations=True by default).
 """
+import logging
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Create async engine
 engine = create_async_engine(
@@ -48,8 +52,30 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db():
     """
-    Initialize database - create all tables.
-    Should be called on application startup.
+    Initialize database on application startup.
+
+    Strategy:
+      1. Run Alembic migrations (handles schema changes on existing DBs).
+      2. Fall back to create_all for any tables Alembic doesn't cover
+         (e.g. during fresh install before first migration).
     """
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Run Alembic migrations (handles existing DBs with data)
+    try:
+        import asyncio
+        from alembic.config import Config
+        from alembic import command
+
+        def run_alembic():
+            alembic_cfg = Config("alembic.ini")
+            command.upgrade(alembic_cfg, "head")
+
+        # Run in thread pool to avoid blocking the async loop
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, run_alembic)
+        logger.info("Alembic migrations applied successfully")
+    except Exception as e:
+        logger.warning(f"Alembic migration failed (may be first run): {e}")
+        # Fall back to create_all for fresh installs
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables created via create_all (fresh install)")

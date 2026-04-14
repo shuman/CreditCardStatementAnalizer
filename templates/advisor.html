@@ -1,0 +1,567 @@
+{% extends "base.html" %}
+
+{% block title %}AI Financial Advisor{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  /* Semicircular gauge */
+  .gauge-container { position: relative; width: 200px; height: 110px; overflow: hidden; }
+  .gauge-bg, .gauge-fill { position: absolute; width: 200px; height: 200px; border-radius: 50%; border: 20px solid #e2e8f0; }
+  .gauge-fill { border-color: var(--gauge-color, #6366f1); clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%); }
+  .gauge-fill-right { position: absolute; width: 200px; height: 200px; border-radius: 50%; border: 20px solid var(--gauge-color, #6366f1); clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%); }
+  .gauge-score { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-size: 2rem; font-weight: 700; }
+  .gauge-label { position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%); font-size: 0.75rem; color: #64748b; white-space: nowrap; }
+
+  /* Score breakdown bars */
+  .score-bar-track { height: 8px; border-radius: 4px; background: #e2e8f0; }
+  .score-bar-fill { height: 8px; border-radius: 4px; transition: width 0.6s ease; }
+
+  /* Section card hover */
+  .section-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .section-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+  /* Skeleton loading */
+  .skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-6 lg:px-8 space-y-6" id="advisorRoot">
+
+  <!-- Section 1: Header -->
+  <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <i class="fas fa-brain text-indigo-500"></i> AI Financial Advisor
+      </h1>
+      <p class="text-sm text-gray-500 mt-1">Powered by Claude Sonnet &middot; Monthly diagnosis cached after generation</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <!-- Month Navigator -->
+      <div class="flex items-center gap-2 bg-white rounded-lg border border-gray-200 px-3 py-1.5 shadow-sm">
+        <button onclick="changeMonth(-1)" class="text-gray-400 hover:text-gray-600"><i class="fas fa-chevron-left text-xs"></i></button>
+        <span id="monthLabel" class="text-sm font-semibold text-gray-700 min-w-[120px] text-center"></span>
+        <button onclick="changeMonth(1)" class="text-gray-400 hover:text-gray-600"><i class="fas fa-chevron-right text-xs"></i></button>
+      </div>
+      <button id="generateBtn" onclick="generateReport()" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">
+        <i class="fas fa-wand-magic-sparkles"></i> Generate Report
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div id="loadingState" class="hidden space-y-4">
+    <div class="skeleton h-24 w-full"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="skeleton h-64"></div>
+      <div class="skeleton h-64"></div>
+    </div>
+    <div class="skeleton h-40 w-full"></div>
+    <p class="text-center text-sm text-gray-400">Claude is analyzing your spending patterns...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div id="emptyState" class="hidden text-center py-20">
+    <i class="fas fa-robot text-6xl text-gray-300 mb-4"></i>
+    <h3 class="text-xl font-semibold text-gray-500 mb-2">No Report Yet</h3>
+    <p class="text-gray-400 mb-6 max-w-md mx-auto">Generate your first AI-powered financial diagnosis. Claude will analyze your spending and deliver a brutally honest assessment.</p>
+    <button onclick="generateReport()" class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">
+      <i class="fas fa-wand-magic-sparkles"></i> Generate My First Report
+    </button>
+  </div>
+
+  <!-- Report Content (hidden until loaded) -->
+  <div id="reportContent" class="hidden space-y-6">
+
+    <!-- Section 2: Diagnosis -->
+    <div class="bg-gradient-to-r from-slate-900 to-indigo-900 rounded-2xl p-6 text-white shadow-lg">
+      <p id="diagnosisText" class="text-lg leading-relaxed font-medium"></p>
+      <div class="flex items-center gap-4 mt-4 text-sm text-indigo-200">
+        <span id="reportDate"></span>
+        <span id="aiCostBadge" class="hidden bg-white/10 rounded-full px-3 py-0.5"></span>
+      </div>
+    </div>
+
+    <!-- Section 3: Health Score + Personality (side by side) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Health Score Card -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Financial Health Score</h3>
+        <div class="flex items-center gap-6">
+          <!-- Gauge -->
+          <div class="flex-shrink-0">
+            <div class="gauge-container" id="gaugeContainer">
+              <svg width="200" height="110" viewBox="0 0 200 110">
+                <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e2e8f0" stroke-width="16" stroke-linecap="round"/>
+                <path id="gaugeArc" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#6366f1" stroke-width="16" stroke-linecap="round"
+                  stroke-dasharray="251" stroke-dashoffset="251"/>
+              </svg>
+              <div class="gauge-score" id="gaugeScore">--</div>
+              <div class="gauge-label" id="gaugeGrade"></div>
+            </div>
+          </div>
+          <!-- Score breakdown bars -->
+          <div class="flex-1 space-y-3" id="scoreBreakdown">
+            <div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Spending Control</span><span class="font-semibold text-gray-700" data-key="spending_control">--/25</span></div>
+              <div class="score-bar-track"><div class="score-bar-fill bg-indigo-500" data-bar="spending_control" style="width:0%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Savings Mindset</span><span class="font-semibold text-gray-700" data-key="savings_mindset">--/25</span></div>
+              <div class="score-bar-track"><div class="score-bar-fill bg-emerald-500" data-bar="savings_mindset" style="width:0%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Consistency</span><span class="font-semibold text-gray-700" data-key="consistency">--/25</span></div>
+              <div class="score-bar-track"><div class="score-bar-fill bg-amber-500" data-bar="consistency" style="width:0%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Discipline</span><span class="font-semibold text-gray-700" data-key="discipline">--/25</span></div>
+              <div class="score-bar-track"><div class="score-bar-fill bg-rose-500" data-bar="discipline" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+        <!-- Delta badge -->
+        <div id="scoreDelta" class="hidden mt-3 text-center">
+          <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"></span>
+        </div>
+      </div>
+
+      <!-- Personality Card -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Your Money Personality</h3>
+        <div class="text-center mb-4">
+          <span id="personalityBadge" class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-lg font-bold bg-indigo-50 text-indigo-700"></span>
+        </div>
+        <p id="personalityDetail" class="text-sm text-gray-600 leading-relaxed"></p>
+      </div>
+    </div>
+
+    <!-- Section 4: Behavioral Insights -->
+    <div>
+      <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+        <i class="fas fa-magnifying-glass-chart text-indigo-400 mr-1"></i> Behavioral Insights
+      </h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="insightsGrid"></div>
+    </div>
+
+    <!-- Section 5: Top 3 Mistakes -->
+    <div>
+      <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+        <i class="fas fa-triangle-exclamation text-red-400 mr-1"></i> Top 3 Mistakes This Month
+      </h3>
+      <div class="space-y-3" id="mistakesList"></div>
+    </div>
+
+    <!-- Section 6 + 7: Opportunities & Risks (side by side) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Opportunities -->
+      <div>
+        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <i class="fas fa-seedling text-emerald-400 mr-1"></i> Opportunities
+        </h3>
+        <div class="space-y-3" id="opportunitiesList"></div>
+      </div>
+
+      <!-- Risk Alerts -->
+      <div>
+        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <i class="fas fa-shield-halved text-amber-400 mr-1"></i> Risk Alerts
+        </h3>
+        <div class="space-y-3" id="risksList"></div>
+      </div>
+    </div>
+
+    <!-- Section 8: One Recommendation -->
+    <div class="bg-white rounded-2xl border-2 border-indigo-200 p-6 shadow-sm">
+      <div class="flex items-start gap-4">
+        <div class="flex-shrink-0 w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+          <i class="fas fa-lightbulb text-indigo-600 text-xl"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-indigo-600 uppercase tracking-wider mb-2">Top Recommendation</h3>
+          <p id="topRecommendation" class="text-gray-800 text-base leading-relaxed"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 9: Projection Chart -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+        <i class="fas fa-chart-line text-indigo-400 mr-1"></i> 6-Month Spending Projection
+      </h3>
+      <div class="h-64">
+        <canvas id="projectionChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Section 10: Advisor Notes -->
+    <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200">
+      <div class="flex items-start gap-3">
+        <i class="fas fa-feather text-slate-400 mt-1"></i>
+        <p id="advisorNotes" class="text-sm italic text-slate-600 leading-relaxed"></p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+let currentYear, currentMonth;
+let projectionChartInstance = null;
+
+// Initialize to last month
+(function() {
+  const now = new Date();
+  // Default to last month
+  if (now.getMonth() === 0) {
+    currentYear = now.getFullYear() - 1;
+    currentMonth = 12;
+  } else {
+    currentYear = now.getFullYear();
+    currentMonth = now.getMonth(); // 0-indexed, so this is last month
+  }
+  updateMonthLabel();
+  loadReport();
+})();
+
+function updateMonthLabel() {
+  document.getElementById('monthLabel').textContent = `${MONTH_NAMES[currentMonth - 1]} ${currentYear}`;
+}
+
+function changeMonth(delta) {
+  currentMonth += delta;
+  if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+  if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+  updateMonthLabel();
+  loadReport();
+}
+
+async function loadReport() {
+  showLoading(true);
+  try {
+    const res = await fetch(`/api/advisor/report/${currentYear}/${currentMonth}`);
+    if (res.status === 404) {
+      showEmpty(true);
+      return;
+    }
+    const data = await res.json();
+    renderReport(data);
+  } catch (e) {
+    console.error('Failed to load report:', e);
+    showEmpty(true);
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function generateReport() {
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+  showLoading(true);
+  try {
+    const res = await fetch(`/api/advisor/generate/${currentYear}/${currentMonth}`, { method: 'POST' });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.detail || 'Failed to generate report');
+      showEmpty(true);
+      return;
+    }
+    const data = await res.json();
+    renderReport(data);
+  } catch (e) {
+    alert('Error: ' + e.message);
+    showEmpty(true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Report';
+    showLoading(false);
+  }
+}
+
+function showLoading(show) {
+  document.getElementById('loadingState').classList.toggle('hidden', !show);
+  if (show) {
+    document.getElementById('reportContent').classList.add('hidden');
+    document.getElementById('emptyState').classList.add('hidden');
+  }
+}
+
+function showEmpty(show) {
+  document.getElementById('emptyState').classList.toggle('hidden', !show);
+  document.getElementById('reportContent').classList.toggle('hidden', show);
+  document.getElementById('loadingState').classList.add('hidden');
+}
+
+function renderReport(data) {
+  document.getElementById('emptyState').classList.add('hidden');
+  document.getElementById('loadingState').classList.add('hidden');
+  document.getElementById('reportContent').classList.remove('hidden');
+
+  // Diagnosis
+  document.getElementById('diagnosisText').textContent = data.diagnosis || '';
+  document.getElementById('reportDate').textContent = `${MONTH_NAMES[data.month - 1]} ${data.year} Report`;
+  if (data.ai_cost_usd) {
+    const badge = document.getElementById('aiCostBadge');
+    badge.textContent = `AI cost: $${data.ai_cost_usd.toFixed(4)}`;
+    badge.classList.remove('hidden');
+  }
+
+  // Health Score
+  renderGauge(data.score || 0);
+  renderScoreBreakdown(data.score_breakdown || {});
+  renderScoreDelta(data.score, data.score_delta);
+
+  // Personality
+  document.getElementById('personalityBadge').textContent = data.personality_type || 'Unknown';
+  document.getElementById('personalityDetail').textContent = data.personality_detail || '';
+
+  // Insights
+  renderInsights(data.insights || []);
+
+  // Mistakes
+  renderMistakes(data.mistakes || []);
+
+  // Opportunities
+  renderOpportunities(data.recommendations || []);
+
+  // Risks
+  renderRisks(data.risks || []);
+
+  // Top Recommendation
+  document.getElementById('topRecommendation').textContent = data.top_recommendation || '';
+
+  // Projection Chart
+  renderProjection(data.projection || {});
+
+  // Advisor Notes
+  document.getElementById('advisorNotes').textContent = data.advisor_notes || '';
+}
+
+function renderGauge(score) {
+  const arc = document.getElementById('gaugeArc');
+  const circumference = 251; // approximate semicircle path length
+  const offset = circumference - (circumference * score / 100);
+  arc.style.strokeDashoffset = offset;
+
+  // Color based on score
+  let color = '#ef4444'; // red
+  if (score >= 80) color = '#10b981'; // emerald
+  else if (score >= 60) color = '#6366f1'; // indigo
+  else if (score >= 40) color = '#f59e0b'; // amber
+  arc.style.stroke = color;
+
+  document.getElementById('gaugeScore').textContent = score;
+
+  let grade = 'Needs Work';
+  if (score >= 80) grade = 'Excellent';
+  else if (score >= 60) grade = 'Good';
+  else if (score >= 40) grade = 'Fair';
+  document.getElementById('gaugeGrade').textContent = grade;
+}
+
+function renderScoreBreakdown(breakdown) {
+  const keys = ['spending_control', 'savings_mindset', 'consistency', 'discipline'];
+  keys.forEach(key => {
+    const val = breakdown[key] || 0;
+    const pct = (val / 25) * 100;
+    document.querySelector(`[data-key="${key}"]`).textContent = `${val}/25`;
+    document.querySelector(`[data-bar="${key}"]`).style.width = `${pct}%`;
+  });
+}
+
+function renderScoreDelta(score, delta) {
+  const el = document.getElementById('scoreDelta');
+  if (delta === null || delta === undefined) {
+    el.classList.add('hidden');
+    return;
+  }
+  el.classList.remove('hidden');
+  const inner = el.querySelector('span');
+  if (delta > 0) {
+    inner.className = 'inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700';
+    inner.innerHTML = `<i class="fas fa-arrow-up text-[10px]"></i> +${delta} from last month`;
+  } else if (delta < 0) {
+    inner.className = 'inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700';
+    inner.innerHTML = `<i class="fas fa-arrow-down text-[10px]"></i> ${delta} from last month`;
+  } else {
+    inner.className = 'inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600';
+    inner.innerHTML = `No change from last month`;
+  }
+}
+
+function renderInsights(insights) {
+  const grid = document.getElementById('insightsGrid');
+  if (!insights.length) { grid.innerHTML = '<p class="text-sm text-gray-400 col-span-3">No insights generated.</p>'; return; }
+  grid.innerHTML = insights.map(i => `
+    <div class="section-card bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
+          <i class="fas ${i.icon || 'fa-circle-info'} text-indigo-500 text-sm"></i>
+        </div>
+        <h4 class="text-sm font-semibold text-gray-800">${esc(i.title)}</h4>
+      </div>
+      <p class="text-xs text-gray-500 leading-relaxed">${esc(i.text)}</p>
+    </div>
+  `).join('');
+}
+
+function renderMistakes(mistakes) {
+  const list = document.getElementById('mistakesList');
+  if (!mistakes.length) { list.innerHTML = '<p class="text-sm text-gray-400">No major mistakes found. Nice!</p>'; return; }
+  list.innerHTML = mistakes.map((m, i) => `
+    <div class="section-card bg-white rounded-xl p-4 border-l-4 border-l-red-400 border border-gray-100 shadow-sm flex items-start gap-4">
+      <div class="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold text-sm">${i + 1}</div>
+      <div class="flex-1">
+        <h4 class="text-sm font-semibold text-gray-800">${esc(m.title)}</h4>
+        <p class="text-xs text-gray-500 mt-1">${esc(m.detail)}</p>
+      </div>
+      <div class="flex-shrink-0 text-right">
+        <span class="text-sm font-bold text-red-600">BDT ${(m.cost_bdt || 0).toLocaleString()}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderOpportunities(opportunities) {
+  const list = document.getElementById('opportunitiesList');
+  if (!opportunities.length) { list.innerHTML = '<p class="text-sm text-gray-400">No opportunities identified.</p>'; return; }
+
+  const totalSavings = opportunities.reduce((sum, o) => sum + (o.savings_bdt || 0), 0);
+
+  list.innerHTML = opportunities.map(o => `
+    <div class="section-card bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+      <div class="flex items-start justify-between gap-2">
+        <h4 class="text-sm font-semibold text-gray-800">${esc(o.title)}</h4>
+        <span class="flex-shrink-0 text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+          Save BDT ${(o.savings_bdt || 0).toLocaleString()}/mo
+        </span>
+      </div>
+      <p class="text-xs text-gray-500 mt-1">${esc(o.detail)}</p>
+    </div>
+  `).join('');
+
+  if (totalSavings > 0) {
+    list.innerHTML += `
+      <div class="bg-emerald-50 rounded-xl p-3 border border-emerald-200 text-center">
+        <span class="text-sm font-bold text-emerald-700">Total potential savings: BDT ${totalSavings.toLocaleString()}/month</span>
+      </div>
+    `;
+  }
+}
+
+function renderRisks(risks) {
+  const list = document.getElementById('risksList');
+  if (!risks.length) { list.innerHTML = '<p class="text-sm text-gray-400">No significant risks detected.</p>'; return; }
+
+  const severityStyles = {
+    high: 'border-l-red-500 bg-red-50',
+    medium: 'border-l-amber-400 bg-amber-50',
+    low: 'border-l-blue-400 bg-blue-50',
+  };
+  const severityBadge = {
+    high: 'bg-red-100 text-red-700',
+    medium: 'bg-amber-100 text-amber-700',
+    low: 'bg-blue-100 text-blue-700',
+  };
+
+  list.innerHTML = risks.map(r => {
+    const severity = (r.severity || 'low').toLowerCase();
+    const style = severityStyles[severity] || severityStyles.low;
+    const badge = severityBadge[severity] || severityBadge.low;
+    return `
+      <div class="section-card rounded-xl p-4 border-l-4 ${style} border border-gray-100 shadow-sm">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${badge}">${severity}</span>
+          <h4 class="text-sm font-semibold text-gray-800">${esc(r.title)}</h4>
+        </div>
+        <p class="text-xs text-gray-500">${esc(r.detail)}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderProjection(projection) {
+  const ctx = document.getElementById('projectionChart').getContext('2d');
+
+  if (projectionChartInstance) {
+    projectionChartInstance.destroy();
+  }
+
+  const currentMonthly = projection.current_monthly || 0;
+  const projected = projection.projected_6m || [];
+  const trend = projection.trend || 'stable';
+
+  // Generate month labels
+  const labels = ['Current'];
+  for (let i = 1; i <= 6; i++) {
+    let m = currentMonth + i;
+    let y = currentYear;
+    while (m > 12) { m -= 12; y++; }
+    labels.push(`${MONTH_NAMES[m - 1].slice(0, 3)} ${y}`);
+  }
+
+  const actualData = [currentMonthly, ...projected];
+
+  // Trend line color
+  const trendColor = trend === 'decreasing' ? '#10b981' : trend === 'increasing' ? '#ef4444' : '#6366f1';
+
+  projectionChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Projected Spend (BDT)',
+        data: actualData,
+        borderColor: trendColor,
+        backgroundColor: trendColor + '15',
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: trendColor,
+        pointBorderWidth: 2,
+        fill: true,
+        tension: 0.3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `BDT ${ctx.parsed.y.toLocaleString()}`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: false,
+          ticks: {
+            callback: v => `BDT ${(v / 1000).toFixed(0)}k`
+          },
+          grid: { color: '#f1f5f9' }
+        },
+        x: {
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function esc(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,608 @@
+{% extends "base.html" %}
+
+{% block title %}Reports{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-0">
+    <!-- Header: Month nav + Account filter -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div class="flex items-center gap-3">
+            <h1 class="text-2xl font-bold text-gray-900">Reports</h1>
+            <div class="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm">
+                <button id="prevMonth" class="px-3 py-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-l-lg transition-colors">
+                    <i class="fas fa-chevron-left text-xs"></i>
+                </button>
+                <span id="monthLabel" class="px-3 py-1.5 text-sm font-semibold text-gray-800 min-w-[140px] text-center select-none"></span>
+                <button id="nextMonth" class="px-3 py-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-r-lg transition-colors">
+                    <i class="fas fa-chevron-right text-xs"></i>
+                </button>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <select id="accountFilter" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white shadow-sm focus:ring-2 focus:ring-indigo-400 focus:border-transparent">
+                <option value="">All Accounts</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Filter pills -->
+    <div class="flex items-center gap-2 mb-6">
+        <button data-filter="all" class="filter-pill active px-3 py-1 rounded-full text-xs font-medium border transition-colors">All</button>
+        <button data-filter="spending" class="filter-pill px-3 py-1 rounded-full text-xs font-medium border transition-colors">Spending</button>
+        <button data-filter="habits" class="filter-pill px-3 py-1 rounded-full text-xs font-medium border transition-colors">Habits</button>
+        <button data-filter="health" class="filter-pill px-3 py-1 rounded-full text-xs font-medium border transition-colors">Health</button>
+    </div>
+
+    <!-- Loading state -->
+    <div id="loadingState" class="text-center py-20 text-gray-400">
+        <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+        <p class="text-sm">Loading reports...</p>
+    </div>
+
+    <!-- Empty state -->
+    <div id="emptyState" class="hidden text-center py-20 text-gray-400">
+        <i class="fas fa-chart-bar text-4xl mb-3"></i>
+        <p class="text-sm font-medium text-gray-500">No transaction data for this period</p>
+        <p class="text-xs mt-1">Upload a statement to see reports</p>
+    </div>
+
+    <!-- Report cards grid -->
+    <div id="reportGrid" class="hidden grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));">
+
+        <!-- #1 Monthly Spending Breakdown -->
+        <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" data-tags="spending">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center"><i class="fas fa-chart-pie text-indigo-500 text-sm"></i></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Monthly Breakdown</p>
+                        <p id="card1-metric" class="text-xs text-gray-400"></p>
+                    </div>
+                </div>
+                <button class="expand-btn text-gray-300 hover:text-indigo-500 transition-colors" data-report="monthly_spending"><i class="fas fa-expand-alt text-sm"></i></button>
+            </div>
+            <div class="flex-1 px-4 pb-1 min-h-0"><canvas id="chart1"></canvas></div>
+            <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="card1-insight"></div>
+        </div>
+
+        <!-- #2 Merchant Concentration -->
+        <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" data-tags="spending">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center"><i class="fas fa-store text-amber-500 text-sm"></i></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Merchant Concentration</p>
+                        <p id="card2-metric" class="text-xs text-gray-400"></p>
+                    </div>
+                </div>
+                <button class="expand-btn text-gray-300 hover:text-indigo-500 transition-colors" data-report="merchant_concentration"><i class="fas fa-expand-alt text-sm"></i></button>
+            </div>
+            <div class="flex-1 px-4 pb-1 min-h-0"><canvas id="chart2"></canvas></div>
+            <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="card2-insight"></div>
+        </div>
+
+        <!-- #7 Subscription Waste -->
+        <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" data-tags="spending habits">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center"><i class="fas fa-sync-alt text-rose-500 text-sm"></i></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Subscriptions</p>
+                        <p id="card7-metric" class="text-xs text-gray-400"></p>
+                    </div>
+                </div>
+                <button class="expand-btn text-gray-300 hover:text-indigo-500 transition-colors" data-report="subscription_waste"><i class="fas fa-expand-alt text-sm"></i></button>
+            </div>
+            <div class="flex-1 px-4 pb-1 min-h-0"><canvas id="chart7"></canvas></div>
+            <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="card7-insight"></div>
+        </div>
+
+        <!-- #8 Lifestyle Creep -->
+        <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" data-tags="habits">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center"><i class="fas fa-chart-line text-teal-500 text-sm"></i></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Lifestyle Creep</p>
+                        <p id="card8-metric" class="text-xs text-gray-400"></p>
+                    </div>
+                </div>
+                <button class="expand-btn text-gray-300 hover:text-indigo-500 transition-colors" data-report="lifestyle_creep"><i class="fas fa-expand-alt text-sm"></i></button>
+            </div>
+            <div class="flex-1 px-4 pb-1 min-h-0"><canvas id="chart8"></canvas></div>
+            <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="card8-insight"></div>
+        </div>
+
+        <!-- #12 Health Score -->
+        <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" data-tags="health">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center"><i class="fas fa-heartbeat text-emerald-500 text-sm"></i></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Health Score</p>
+                        <p id="card12-metric" class="text-xs text-gray-400"></p>
+                    </div>
+                </div>
+                <button class="expand-btn text-gray-300 hover:text-indigo-500 transition-colors" data-report="health_score"><i class="fas fa-expand-alt text-sm"></i></button>
+            </div>
+            <div class="flex-1 px-4 pb-1 min-h-0 flex items-center justify-center">
+                <div class="gauge-container" id="gaugeContainer">
+                    <svg viewBox="0 0 200 130" class="w-48 h-auto">
+                        <path d="M 20 120 A 80 80 0 0 1 180 120" fill="none" stroke="#e5e7eb" stroke-width="14" stroke-linecap="round"/>
+                        <path id="gaugeArc" d="M 20 120 A 80 80 0 0 1 180 120" fill="none" stroke="#10b981" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 251"/>
+                        <text x="100" y="105" text-anchor="middle" class="text-3xl font-bold" fill="#1f2937" id="gaugeText">0</text>
+                        <text x="100" y="122" text-anchor="middle" class="text-xs" fill="#9ca3af" id="gaugeGrade">--</text>
+                    </svg>
+                </div>
+            </div>
+            <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="card12-insight"></div>
+        </div>
+
+        <!-- #18 No-Spend Day Tracker -->
+        <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" data-tags="habits health">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center"><i class="fas fa-calendar-check text-violet-500 text-sm"></i></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">No-Spend Days</p>
+                        <p id="card18-metric" class="text-xs text-gray-400"></p>
+                    </div>
+                </div>
+                <button class="expand-btn text-gray-300 hover:text-indigo-500 transition-colors" data-report="no_spend_tracker"><i class="fas fa-expand-alt text-sm"></i></button>
+            </div>
+            <div class="flex-1 px-4 pb-1 min-h-0 flex items-center justify-center">
+                <div id="calendarGrid" class="grid grid-cols-7 gap-1 w-full max-w-[260px]"></div>
+            </div>
+            <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="card18-insight"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Expand Modal -->
+<div id="expandModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-auto">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <h2 id="modalTitle" class="text-lg font-bold text-gray-800"></h2>
+            <button id="closeModal" class="text-gray-400 hover:text-gray-600 transition-colors"><i class="fas fa-times text-lg"></i></button>
+        </div>
+        <div class="p-6" id="modalBody"></div>
+    </div>
+</div>
+
+<style>
+    /* Filter pills */
+    .filter-pill { background: white; color: #6b7280; border-color: #e5e7eb; }
+    .filter-pill.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+    .filter-pill:not(.active):hover { background: #f9fafb; border-color: #d1d5db; }
+
+    /* Calendar heat grid */
+    .cal-day { width: 100%; aspect-ratio: 1; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; }
+    .cal-day.spent { background: #fecaca; color: #991b1b; }
+    .cal-day.no-spend { background: #bbf7d0; color: #166534; }
+    .cal-day.future { background: #f3f4f6; color: #9ca3af; }
+
+    /* Gauge animation */
+    #gaugeArc { transition: stroke-dasharray 1s ease, stroke 0.5s ease; }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+    // State — default to previous month (current month statement not received yet)
+    const today = new Date();
+    let currentYear = today.getMonth() === 0 ? today.getFullYear() - 1 : today.getFullYear();
+    let currentMonth = today.getMonth() === 0 ? 12 : today.getMonth(); // 1-based, previous month
+    let currentAccountId = '';
+    const charts = {};
+
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const CHART_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#8b5cf6','#f97316','#06b6d4','#ec4899','#84cc16','#14b8a6','#e11d48','#7c3aed'];
+
+    // Init
+    async function init() {
+        setupNav();
+        setupFilters();
+        setupModal();
+        await loadAccounts();
+        await loadDashboard();
+    }
+
+    // --- Navigation ---
+    function setupNav() {
+        document.getElementById('prevMonth').addEventListener('click', () => {
+            currentMonth--;
+            if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+            loadDashboard();
+        });
+        document.getElementById('nextMonth').addEventListener('click', () => {
+            currentMonth++;
+            if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+            loadDashboard();
+        });
+    }
+
+    function updateMonthLabel() {
+        document.getElementById('monthLabel').textContent = `${MONTH_NAMES[currentMonth - 1]} ${currentYear}`;
+    }
+
+    // --- Account filter ---
+    async function loadAccounts() {
+        // Accounts are loaded with dashboard data
+    }
+
+    function populateAccounts(accounts) {
+        const sel = document.getElementById('accountFilter');
+        const current = sel.value;
+        sel.innerHTML = '<option value="">All Accounts</option>';
+        accounts.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.id;
+            opt.textContent = a.label || a.masked;
+            sel.appendChild(opt);
+        });
+        sel.value = currentAccountId || '';
+        sel.onchange = () => { currentAccountId = sel.value; loadDashboard(); };
+    }
+
+    // --- Filter pills ---
+    function setupFilters() {
+        document.querySelectorAll('.filter-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                applyFilter(btn.dataset.filter);
+            });
+        });
+    }
+
+    function applyFilter(tag) {
+        document.querySelectorAll('.report-card').forEach(card => {
+            if (tag === 'all' || card.dataset.tags.includes(tag)) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    // --- Modal ---
+    function setupModal() {
+        document.getElementById('closeModal').addEventListener('click', closeModal);
+        document.getElementById('expandModal').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeModal();
+        });
+    }
+    function closeModal() { document.getElementById('expandModal').classList.add('hidden'); }
+    function openModal(title, html) {
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('expandModal').classList.remove('hidden');
+    }
+
+    // Expand buttons
+    document.querySelectorAll('.expand-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const reportId = btn.dataset.report;
+            btn.querySelector('i').className = 'fas fa-spinner fa-spin text-sm';
+            try {
+                const params = new URLSearchParams({ year: currentYear, month: currentMonth });
+                if (currentAccountId) params.set('account_id', currentAccountId);
+                const resp = await fetch(`/api/reports/${reportId}?${params}`);
+                const data = await resp.json();
+                renderExpandedReport(reportId, data);
+            } catch (err) {
+                openModal('Error', '<p class="text-red-500 text-sm">Failed to load report details.</p>');
+            } finally {
+                btn.querySelector('i').className = 'fas fa-expand-alt text-sm';
+            }
+        });
+    });
+
+    function renderExpandedReport(reportId, data) {
+        let html = '';
+        if (reportId === 'monthly_spending') {
+            const rows = (data.categories || []).map(c =>
+                `<tr class="border-b border-gray-50"><td class="py-1.5 text-sm">${c.name}</td><td class="text-right text-sm font-medium">${fmt(c.amount)}</td><td class="text-right text-sm text-gray-500">${c.pct}%</td><td class="text-right text-sm ${c.change_pct > 0 ? 'text-red-500' : c.change_pct < 0 ? 'text-green-500' : 'text-gray-400'}">${c.change_pct > 0 ? '+' : ''}${c.change_pct}%</td></tr>`
+            ).join('');
+            html = `<div class="mb-4"><canvas id="modalChart" height="200"></canvas></div>
+                <p class="text-sm font-semibold mb-2">Total: ${fmt(data.total)} (prev: ${fmt(data.prev_total)})</p>
+                <table class="w-full"><thead><tr class="text-xs text-gray-400 border-b"><th class="text-left py-1">Category</th><th class="text-right">Amount</th><th class="text-right">%</th><th class="text-right">MoM</th></tr></thead><tbody>${rows}</tbody></table>`;
+        } else if (reportId === 'merchant_concentration') {
+            const rows = (data.merchants || []).map(m =>
+                `<tr class="border-b border-gray-50"><td class="py-1.5 text-sm">${m.name}</td><td class="text-right text-sm font-medium">${fmt(m.amount)}</td><td class="text-right text-sm text-gray-500">${m.pct}%</td><td class="text-right text-sm text-gray-400">${m.txns} txns</td></tr>`
+            ).join('');
+            html = `<p class="text-sm text-gray-500 mb-3">${data.insight}</p><table class="w-full"><thead><tr class="text-xs text-gray-400 border-b"><th class="text-left py-1">Merchant</th><th class="text-right">Amount</th><th class="text-right">%</th><th class="text-right">Txns</th></tr></thead><tbody>${rows}</tbody></table>`;
+        } else if (reportId === 'subscription_waste') {
+            const rows = (data.subscriptions || []).map(s =>
+                `<tr class="border-b border-gray-50"><td class="py-1.5 text-sm">${s.merchant}</td><td class="text-right text-sm font-medium">${fmt(s.monthly)}/mo</td><td class="text-right text-sm text-gray-500">${fmt(s.annual)}/yr</td></tr>`
+            ).join('');
+            html = `<div class="flex gap-4 mb-4"><div class="bg-rose-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">Monthly</p><p class="text-lg font-bold text-rose-600">${fmt(data.total_monthly)}</p></div><div class="bg-rose-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">Annualized</p><p class="text-lg font-bold text-rose-600">${fmt(data.total_annual)}</p></div></div>
+                ${(data.duplicate_services || []).length > 0 ? '<p class="text-sm text-amber-600 mb-2"><i class="fas fa-exclamation-triangle mr-1"></i>Duplicates: ' + data.duplicate_services.join(', ') + '</p>' : ''}
+                <table class="w-full"><thead><tr class="text-xs text-gray-400 border-b"><th class="text-left py-1">Subscription</th><th class="text-right">Monthly</th><th class="text-right">Annual</th></tr></thead><tbody>${rows}</tbody></table>`;
+        } else if (reportId === 'lifestyle_creep') {
+            html = `<div class="mb-4"><canvas id="modalChart" height="200"></canvas></div>
+                <div class="flex gap-4"><div class="bg-teal-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">6-Month Trend</p><p class="text-lg font-bold ${data.trend_direction === 'increasing' ? 'text-red-600' : data.trend_direction === 'decreasing' ? 'text-green-600' : 'text-gray-600'}">${data.trend_pct > 0 ? '+' : ''}${data.trend_pct}%</p></div>
+                <div class="bg-gray-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">Biggest Increase</p><p class="text-sm font-semibold text-gray-700">${data.biggest_increase_category}</p></div></div>`;
+        } else if (reportId === 'health_score') {
+            const factorRows = (data.factors || []).map(f => {
+                const pct = Math.round(f.score / f.max * 100);
+                const barColor = pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-500';
+                return `<div class="flex items-center gap-3 py-1.5"><span class="text-sm w-36">${f.name}</span><div class="flex-1 bg-gray-100 rounded-full h-2"><div class="${barColor} h-2 rounded-full" style="width:${pct}%"></div></div><span class="text-sm text-gray-500 w-12 text-right">${f.score}/${f.max}</span></div>`;
+            }).join('');
+            html = `<div class="flex items-center gap-6 mb-6"><div class="text-center"><p class="text-4xl font-bold ${data.score >= 60 ? 'text-emerald-600' : 'text-amber-600'}">${data.score}</p><p class="text-sm text-gray-500">${data.grade}</p></div></div>${factorRows}`;
+        } else if (reportId === 'no_spend_tracker') {
+            const calHtml = (data.calendar || []).map(d =>
+                `<div class="cal-day ${d.spent ? 'spent' : 'no-spend'}">${d.day}</div>`
+            ).join('');
+            html = `<div class="flex gap-4 mb-4">
+                <div class="bg-green-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">No-Spend Days</p><p class="text-lg font-bold text-green-600">${data.no_spend_days}/${data.total_days}</p></div>
+                <div class="bg-violet-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">Current Streak</p><p class="text-lg font-bold text-violet-600">${data.current_streak} days</p></div>
+                <div class="bg-gray-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">Best Streak</p><p class="text-lg font-bold text-gray-700">${data.best_streak} days</p></div>
+                <div class="bg-gray-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">Goal</p><p class="text-lg font-bold text-gray-700">${data.goal} days</p></div></div>
+                <div class="grid grid-cols-7 gap-1 max-w-md">${calHtml}</div>`;
+        }
+        const titles = {
+            monthly_spending: 'Monthly Spending Breakdown',
+            merchant_concentration: 'Merchant Concentration',
+            subscription_waste: 'Subscription Analysis',
+            lifestyle_creep: 'Lifestyle Creep Tracker',
+            health_score: 'Financial Health Score',
+            no_spend_tracker: 'No-Spend Day Tracker',
+        };
+        openModal(titles[reportId] || 'Report', html);
+
+        // Render modal chart if canvas exists
+        const modalCanvas = document.getElementById('modalChart');
+        if (modalCanvas) {
+            if (reportId === 'monthly_spending') renderDoughnut(modalCanvas, data);
+            if (reportId === 'lifestyle_creep') renderLineChart(modalCanvas, data);
+        }
+    }
+
+    // --- Data loading ---
+    async function loadDashboard() {
+        updateMonthLabel();
+        const grid = document.getElementById('reportGrid');
+        const loading = document.getElementById('loadingState');
+        const empty = document.getElementById('emptyState');
+
+        grid.classList.add('hidden');
+        empty.classList.add('hidden');
+        loading.classList.remove('hidden');
+
+        const params = new URLSearchParams({ year: currentYear, month: currentMonth });
+        if (currentAccountId) params.set('account_id', currentAccountId);
+
+        try {
+            const resp = await fetch(`/api/reports/dashboard?${params}`);
+            const data = await resp.json();
+
+            loading.classList.add('hidden');
+
+            // Populate accounts
+            if (data.accounts) populateAccounts(data.accounts);
+
+            // Check if there's any data
+            const ms = data.monthly_spending || {};
+            const hasData = (ms.categories || []).length > 0;
+            if (!hasData) {
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            grid.classList.remove('hidden');
+            renderAllCards(data);
+        } catch (err) {
+            loading.classList.add('hidden');
+            empty.classList.remove('hidden');
+            console.error('Dashboard load failed:', err);
+        }
+    }
+
+    function renderAllCards(data) {
+        destroyCharts();
+        renderCard1(data.monthly_spending);
+        renderCard2(data.merchant_concentration);
+        renderCard7(data.subscription_waste);
+        renderCard8(data.lifestyle_creep);
+        renderCard12(data.health_score);
+        renderCard18(data.no_spend_tracker);
+    }
+
+    function destroyCharts() {
+        Object.values(charts).forEach(c => c.destroy());
+        for (const k in charts) delete charts[k];
+    }
+
+    // --- Individual card renderers ---
+
+    function renderCard1(data) {
+        if (!data) return;
+        document.getElementById('card1-metric').textContent = `Total: ${fmt(data.total)}`;
+        document.getElementById('card1-insight').textContent = `Top: ${data.top_category}`;
+        renderDoughnut(document.getElementById('chart1'), data);
+    }
+
+    function renderCard2(data) {
+        if (!data) return;
+        document.getElementById('card2-metric').textContent = `${data.total_merchants} merchants`;
+        document.getElementById('card2-insight').textContent = data.insight || '';
+        const merchants = (data.merchants || []).slice(0, 10).reverse();
+        charts['chart2'] = new Chart(document.getElementById('chart2'), {
+            type: 'bar',
+            data: {
+                labels: merchants.map(m => truncate(m.name, 18)),
+                datasets: [{
+                    data: merchants.map(m => m.amount),
+                    backgroundColor: '#f59e0b',
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } },
+                scales: { x: { display: false }, y: { ticks: { font: { size: 10 } }, grid: { display: false } } }
+            }
+        });
+    }
+
+    function renderCard7(data) {
+        if (!data) return;
+        document.getElementById('card7-metric').textContent = `Monthly: ${fmt(data.total_monthly)}`;
+        document.getElementById('card7-insight').textContent = `Annual: ${fmt(data.total_annual)}`;
+        const subs = (data.subscriptions || []).slice(0, 8);
+        charts['chart7'] = new Chart(document.getElementById('chart7'), {
+            type: 'bar',
+            data: {
+                labels: subs.map(s => truncate(s.merchant, 15)),
+                datasets: [{
+                    label: 'Monthly',
+                    data: subs.map(s => s.monthly),
+                    backgroundColor: '#f43f5e',
+                    borderRadius: 4,
+                }, {
+                    label: 'Annual',
+                    data: subs.map(s => s.annual),
+                    backgroundColor: '#fecdd3',
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10 } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) } } },
+                scales: { x: { ticks: { font: { size: 9 } }, grid: { display: false } }, y: { display: false } }
+            }
+        });
+    }
+
+    function renderCard8(data) {
+        if (!data) return;
+        const dir = data.trend_direction;
+        document.getElementById('card8-metric').textContent = `Trend: ${dir === 'increasing' ? '+' : ''}${data.trend_pct}%`;
+        document.getElementById('card8-insight').textContent = `Biggest increase: ${data.biggest_increase_category}`;
+        renderLineChart(document.getElementById('chart8'), data);
+    }
+
+    function renderCard12(data) {
+        if (!data) return;
+        const score = data.score || 0;
+        document.getElementById('card12-metric').textContent = `${score}/100 — ${data.grade}`;
+        // Gauge: arc length is ~251 (half circle with r=80)
+        const arcLength = 251;
+        const fill = arcLength * (score / 100);
+        const color = score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#ef4444';
+        const arc = document.getElementById('gaugeArc');
+        arc.setAttribute('stroke-dasharray', `${fill} ${arcLength}`);
+        arc.setAttribute('stroke', color);
+        document.getElementById('gaugeText').textContent = score;
+        document.getElementById('gaugeGrade').textContent = data.grade;
+        const best = (data.factors || []).reduce((b, f) => b + (f.score >= f.max * 0.8 ? f.name : b), '—');
+        document.getElementById('card12-insight').textContent = `Strongest: ${best}`;
+    }
+
+    function renderCard18(data) {
+        if (!data) return;
+        const pct = data.total_days > 0 ? Math.round(data.no_spend_days / data.total_days * 100) : 0;
+        document.getElementById('card18-metric').textContent = `${data.no_spend_days}/${data.total_days} days (${pct}%)`;
+        document.getElementById('card18-insight').textContent = `Streak: ${data.current_streak}d | Best: ${data.best_streak}d | Goal: ${data.goal}d`;
+
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+        const todayDate = new Date();
+        const todayDay = (todayDate.getFullYear() === currentYear && todayDate.getMonth() + 1 === currentMonth) ? todayDate.getDate() : 32;
+
+        (data.calendar || []).forEach(d => {
+            const div = document.createElement('div');
+            div.className = 'cal-day';
+            div.textContent = d.day;
+            if (d.day > todayDay) {
+                div.classList.add('future');
+            } else if (d.spent) {
+                div.classList.add('spent');
+            } else {
+                div.classList.add('no-spend');
+            }
+            grid.appendChild(div);
+        });
+    }
+
+    // --- Shared chart renderers ---
+
+    function renderDoughnut(canvas, data) {
+        const cats = (data.categories || []).slice(0, 8);
+        const chartKey = canvas.id;
+        charts[chartKey] = new Chart(canvas, {
+            type: 'doughnut',
+            data: {
+                labels: cats.map(c => c.name),
+                datasets: [{
+                    data: cats.map(c => c.amount),
+                    backgroundColor: CHART_COLORS.slice(0, cats.length),
+                    borderWidth: 0,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: { position: 'right', labels: { font: { size: 10 }, boxWidth: 10, padding: 8 } },
+                    tooltip: { callbacks: { label: ctx => `${ctx.label}: ${fmt(ctx.raw)}` } }
+                }
+            }
+        });
+    }
+
+    function renderLineChart(canvas, data) {
+        const months = (data.months || []);
+        const chartKey = canvas.id;
+        charts[chartKey] = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: months.map(m => m.month),
+                datasets: [{
+                    data: months.map(m => m.total),
+                    borderColor: '#14b8a6',
+                    backgroundColor: 'rgba(20,184,166,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#14b8a6',
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } },
+                scales: {
+                    x: { ticks: { font: { size: 10 } }, grid: { display: false } },
+                    y: { ticks: { font: { size: 10 }, callback: v => fmtShort(v) }, grid: { color: '#f3f4f6' } }
+                }
+            }
+        });
+    }
+
+    // --- Helpers ---
+    function fmt(n) {
+        if (n == null) return '—';
+        return new Intl.NumberFormat('en-BD', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n) + ' BDT';
+    }
+    function fmtShort(n) {
+        if (n >= 100000) return (n / 1000).toFixed(0) + 'k';
+        if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+        return n;
+    }
+    function truncate(str, len) {
+        return str.length > len ? str.slice(0, len - 1) + '…' : str;
+    }
+
+    // Boot
+    init();
+})();
+</script>
+{% endblock %}
