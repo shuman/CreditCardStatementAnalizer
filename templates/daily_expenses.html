@@ -1,0 +1,576 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Expenses{% endblock %}
+
+{% block content %}
+<div class="px-4 sm:px-0">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Daily Expenses</h1>
+        <p class="text-gray-600 mt-2">Quick cash expense logging with AI categorization</p>
+    </div>
+
+    <!-- Quick Add Form (Always visible at top) -->
+    <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Add New Expense</h2>
+        <form id="expenseForm" class="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Amount (BDT) *</label>
+                <input type="number" id="expenseAmount" required step="0.01" min="0"
+                       placeholder="100.00" autofocus
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                <input type="text" id="expenseDescription" required
+                       placeholder="e.g., Tea, Rickshaw, Lunch"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payment</label>
+                <select id="expensePaymentMethod"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="cash">Cash</option>
+                    <option value="bkash">bKash</option>
+                    <option value="nagad">Nagad</option>
+                    <option value="rocket">Rocket</option>
+                    <option value="card_estimate">Card</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input type="date" id="expenseDate"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            <div class="md:col-span-6 flex gap-3">
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2">
+                    <i class="fas fa-save"></i>
+                    <span>Save Draft</span>
+                </button>
+                <button type="button" onclick="clearForm()" class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 font-medium">
+                    Clear
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Recent Entries (Last 10) -->
+    <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Recent Entries</h2>
+        <div id="recentExpenses" class="space-y-2">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <!-- Draft Expenses (For Batch Processing) -->
+    <div id="draftsSection" class="bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 shadow-md rounded-lg p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-inbox text-yellow-600"></i>
+                Draft Expenses
+                <span id="draftCount" class="bg-yellow-200 text-yellow-800 text-xs font-bold px-2 py-1 rounded-full">0</span>
+            </h2>
+            <div class="flex gap-2">
+                <button id="selectAllDrafts" onclick="selectAllDrafts()" class="text-sm bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 font-medium">
+                    Select All
+                </button>
+                <button id="processSelectedBtn" onclick="processSelected()" disabled
+                        class="bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 font-medium text-sm disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2">
+                    <i class="fas fa-magic"></i>
+                    <span>Process with AI</span>
+                </button>
+            </div>
+        </div>
+        <div id="draftExpenses" class="space-y-2">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <!-- Processed Expenses (Awaiting Review) -->
+    <div id="reviewSection" class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 shadow-md rounded-lg p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-clipboard-check text-blue-600"></i>
+                Review AI Results
+                <span id="reviewCount" class="bg-blue-200 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">0</span>
+            </h2>
+        </div>
+        <div id="reviewExpenses" class="space-y-3">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <!-- All Expenses (Finalized) -->
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-gray-800">All Expenses</h2>
+                <div class="flex gap-2">
+                    <select id="filterStatus" onchange="loadExpenses()" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5">
+                        <option value="">All</option>
+                        <option value="processed">Processed</option>
+                        <option value="draft">Draft</option>
+                    </select>
+                    <button onclick="exportExpenses()" class="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 flex items-center gap-2">
+                        <i class="fas fa-download"></i>
+                        Export
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="expensesTable" class="bg-white divide-y divide-gray-200">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="hidden fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2">
+    <i class="fas fa-check-circle"></i>
+    <span id="toastMessage">Success!</span>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let selectedDraftIds = new Set();
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadRecentExpenses();
+    loadDraftExpenses();
+    loadProcessedExpenses();
+    loadExpenses();
+
+    // Set today's date as default
+    document.getElementById('expenseDate').valueAsDate = new Date();
+});
+
+// Handle form submission
+document.getElementById('expenseForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const amount = parseFloat(document.getElementById('expenseAmount').value);
+    const description = document.getElementById('expenseDescription').value.trim();
+    const paymentMethod = document.getElementById('expensePaymentMethod').value;
+    const date = document.getElementById('expenseDate').value || new Date().toISOString().split('T')[0];
+
+    if (!amount || !description) {
+        showToast('Please fill in all required fields', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/daily-expenses', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                amount,
+                description,
+                payment_method: paymentMethod,
+                transaction_date: date,
+                currency: 'BDT'
+            })
+        });
+
+        if (response.ok) {
+            showToast('Expense saved as draft!');
+            clearForm();
+            loadRecentExpenses();
+            loadDraftExpenses();
+        } else {
+            throw new Error('Failed to save expense');
+        }
+    } catch (err) {
+        showToast('Error saving expense', 'error');
+        console.error(err);
+    }
+});
+
+function clearForm() {
+    document.getElementById('expenseForm').reset();
+    document.getElementById('expenseDate').valueAsDate = new Date();
+    document.getElementById('expenseAmount').focus();
+}
+
+async function loadRecentExpenses() {
+    try {
+        const response = await fetch('/api/daily-expenses?limit=10');
+        const expenses = await response.json();
+
+        const container = document.getElementById('recentExpenses');
+        if (expenses.length === 0) {
+            container.innerHTML = '<p class="text-sm text-gray-400 italic">No expenses yet</p>';
+            return;
+        }
+
+        container.innerHTML = expenses.map(e => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-900">${e.description_raw}</p>
+                    <p class="text-xs text-gray-500">${new Date(e.transaction_date).toLocaleDateString()} • ${e.payment_method}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-bold text-gray-900">৳${e.amount}</p>
+                    <span class="inline-block px-2 py-0.5 text-xs rounded-full ${getStatusBadge(e.ai_status)}">${e.ai_status}</span>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading recent expenses:', err);
+    }
+}
+
+async function loadDraftExpenses() {
+    try {
+        const response = await fetch('/api/daily-expenses/drafts');
+        const drafts = await response.json();
+
+        document.getElementById('draftCount').textContent = drafts.length;
+
+        const container = document.getElementById('draftExpenses');
+        const section = document.getElementById('draftsSection');
+
+        if (drafts.length === 0) {
+            section.classList.add('hidden');
+            return;
+        }
+
+        section.classList.remove('hidden');
+        container.innerHTML = drafts.map(d => `
+            <div class="flex items-center gap-3 p-3 bg-white rounded-lg border border-yellow-200">
+                <input type="checkbox" class="w-4 h-4 text-blue-600" value="${d.id}" onchange="toggleDraftSelection(${d.id})">
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-gray-900">${d.description_raw}</p>
+                    <p class="text-xs text-gray-500">${new Date(d.transaction_date).toLocaleDateString()}</p>
+                </div>
+                <p class="text-sm font-bold text-gray-900">৳${d.amount}</p>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading drafts:', err);
+    }
+}
+
+async function loadProcessedExpenses() {
+    try {
+        const response = await fetch('/api/daily-expenses/processed');
+        const processed = await response.json();
+
+        document.getElementById('reviewCount').textContent = processed.length;
+
+        const container = document.getElementById('reviewExpenses');
+        const section = document.getElementById('reviewSection');
+
+        if (processed.length === 0) {
+            section.classList.add('hidden');
+            return;
+        }
+
+        section.classList.remove('hidden');
+        container.innerHTML = processed.map(p => `
+            <div class="p-4 bg-white rounded-lg border border-blue-200" id="review_${p.id}">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-900">${p.description_raw}</p>
+                        <p class="text-xs text-gray-500">${new Date(p.transaction_date).toLocaleDateString()} • ৳${p.amount} • ${p.payment_method}</p>
+                    </div>
+                    ${p.confidence_score ? `<span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">AI: ${(p.confidence_score * 100).toFixed(0)}%</span>` : ''}
+                </div>
+
+                <!-- Preview Mode -->
+                <div id="preview_${p.id}" class="mb-3">
+                    <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 border border-green-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-gray-600 mb-1">AI Suggested:</p>
+                                <p class="text-sm font-semibold text-gray-900">
+                                    <i class="fas fa-tag text-green-600 mr-1"></i>
+                                    ${p.category || 'Uncategorized'}
+                                    ${p.subcategory ? `<span class="text-gray-400 mx-1">›</span><span class="text-gray-700">${p.subcategory}</span>` : ''}
+                                </p>
+                            </div>
+                            <button onclick="enableEdit(${p.id})" class="text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1">
+                                <i class="fas fa-edit"></i>
+                                Edit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit Mode (Hidden by default) -->
+                <div id="edit_${p.id}" class="mb-3 hidden">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-xs font-medium text-gray-700 mb-1 block">Category *</label>
+                            <select id="cat_${p.id}" class="w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-blue-500">
+                                ${getCategories().map(cat => `<option value="${cat}" ${p.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium text-gray-700 mb-1 block">Subcategory</label>
+                            <input type="text" value="${p.subcategory || ''}" placeholder="Optional"
+                                   id="subcat_${p.id}"
+                                   class="w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2">
+                    <!-- Always visible Accept button -->
+                    <button onclick="acceptExpense(${p.id})" id="accept_btn_${p.id}"
+                            class="flex-1 bg-green-600 text-white text-sm px-4 py-2 rounded-md hover:bg-green-700 font-medium">
+                        <i class="fas fa-check mr-1"></i>Accept & Finalize
+                    </button>
+                    <!-- Save button (only visible in edit mode) -->
+                    <button onclick="saveEdits(${p.id})" id="save_btn_${p.id}"
+                            class="hidden flex-1 bg-blue-600 text-white text-sm px-4 py-2 rounded-md hover:bg-blue-700 font-medium">
+                        <i class="fas fa-save mr-1"></i>Save Changes
+                    </button>
+                    <!-- Cancel button (only visible in edit mode) -->
+                    <button onclick="cancelEdit(${p.id})" id="cancel_btn_${p.id}"
+                            class="hidden bg-gray-200 text-gray-700 text-sm px-4 py-2 rounded-md hover:bg-gray-300">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading processed expenses:', err);
+    }
+}
+
+async function loadExpenses() {
+    const status = document.getElementById('filterStatus').value;
+    const url = status ? `/api/daily-expenses?status=${status}&limit=100` : '/api/daily-expenses?limit=100';
+
+    try {
+        const response = await fetch(url);
+        const expenses = await response.json();
+
+        const tbody = document.getElementById('expensesTable');
+        if (expenses.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-gray-400">No expenses found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = expenses.map(e => `
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 text-sm text-gray-900">${new Date(e.transaction_date).toLocaleDateString()}</td>
+                <td class="px-6 py-4">
+                    <p class="text-sm font-medium text-gray-900">${e.description_raw}</p>
+                    ${e.description_normalized ? `<p class="text-xs text-gray-500">${e.description_normalized}</p>` : ''}
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-700">${e.category || '-'} ${e.subcategory ? `<br><span class="text-xs text-gray-500">${e.subcategory}</span>` : ''}</td>
+                <td class="px-6 py-4 text-sm text-gray-700">${e.payment_method}</td>
+                <td class="px-6 py-4 text-sm font-bold text-right text-gray-900">৳${e.amount}</td>
+                <td class="px-6 py-4 text-center">
+                    <button onclick="deleteExpense(${e.id})" class="text-red-600 hover:text-red-800">
+                        <i class="fas fa-trash text-sm"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        console.error('Error loading expenses:', err);
+    }
+}
+
+function toggleDraftSelection(id) {
+    if (selectedDraftIds.has(id)) {
+        selectedDraftIds.delete(id);
+    } else {
+        selectedDraftIds.add(id);
+    }
+    document.getElementById('processSelectedBtn').disabled = selectedDraftIds.size === 0;
+}
+
+function selectAllDrafts() {
+    document.querySelectorAll('#draftExpenses input[type="checkbox"]').forEach(cb => {
+        cb.checked = true;
+        selectedDraftIds.add(parseInt(cb.value));
+    });
+    document.getElementById('processSelectedBtn').disabled = false;
+}
+
+async function processSelected() {
+    if (selectedDraftIds.size === 0) return;
+
+    const btn = document.getElementById('processSelectedBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+
+    try {
+        const response = await fetch('/api/daily-expenses/batch-process', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({expense_ids: Array.from(selectedDraftIds)})
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast(`Processed ${result.processed_count} expenses! Cost: $${result.cost_usd.toFixed(4)}`);
+            selectedDraftIds.clear();
+            loadDraftExpenses();
+            loadProcessedExpenses();
+            loadExpenses();
+        } else {
+            throw new Error('Batch processing failed');
+        }
+    } catch (err) {
+        showToast('Error processing expenses', 'error');
+        console.error(err);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic"></i><span>Process with AI</span>';
+    }
+}
+
+async function acceptExpense(id) {
+    // Accept AI categorization as-is and finalize
+    const categoryEl = document.getElementById(`cat_${id}`);
+    const subcategoryEl = document.getElementById(`subcat_${id}`);
+
+    // Get current values (from preview or edit mode)
+    const category = categoryEl?.value || categoryEl?.getAttribute('data-value');
+    const subcategory = subcategoryEl?.value || subcategoryEl?.getAttribute('data-value');
+
+    try {
+        const response = await fetch(`/api/daily-expenses/${id}`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({category, subcategory})
+        });
+
+        if (response.ok) {
+            showToast('✓ Expense accepted and finalized!');
+            loadProcessedExpenses();
+            loadExpenses();
+            loadRecentExpenses();
+        }
+    } catch (err) {
+        showToast('Error accepting expense', 'error');
+        console.error(err);
+    }
+}
+
+function enableEdit(id) {
+    // Show edit mode, hide preview
+    document.getElementById(`preview_${id}`).classList.add('hidden');
+    document.getElementById(`edit_${id}`).classList.remove('hidden');
+
+    // Toggle buttons
+    document.getElementById(`accept_btn_${id}`).classList.add('hidden');
+    document.getElementById(`save_btn_${id}`).classList.remove('hidden');
+    document.getElementById(`cancel_btn_${id}`).classList.remove('hidden');
+}
+
+function cancelEdit(id) {
+    // Hide edit mode, show preview
+    document.getElementById(`preview_${id}`).classList.remove('hidden');
+    document.getElementById(`edit_${id}`).classList.add('hidden');
+
+    // Toggle buttons
+    document.getElementById(`accept_btn_${id}`).classList.remove('hidden');
+    document.getElementById(`save_btn_${id}`).classList.add('hidden');
+    document.getElementById(`cancel_btn_${id}`).classList.add('hidden');
+}
+
+async function saveEdits(id) {
+    // Save user's edited category values
+    const category = document.getElementById(`cat_${id}`)?.value;
+    const subcategory = document.getElementById(`subcat_${id}`)?.value;
+
+    try {
+        const response = await fetch(`/api/daily-expenses/${id}`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({category, subcategory})
+        });
+
+        if (response.ok) {
+            showToast('✓ Changes saved and finalized!');
+            loadProcessedExpenses();
+            loadExpenses();
+            loadRecentExpenses();
+        }
+    } catch (err) {
+        showToast('Error saving changes', 'error');
+        console.error(err);
+    }
+}
+
+function getCategories() {
+    // Same categories as statement transactions
+    return [
+        "Groceries", "Food & Dining", "Transport", "Health",
+        "Utilities", "Shopping", "Software & Tools", "Freelancing",
+        "Entertainment", "Fees & Charges", "Financial Services",
+        "Travel & Hotels", "Education", "Insurance", "Charity",
+        "Government & Tax", "Personal Care", "Home & Garden",
+        "Bills & EMI", "Other"
+    ];
+}
+
+async function deleteExpense(id) {
+    if (!confirm('Delete this expense?')) return;
+
+    try {
+        const response = await fetch(`/api/daily-expenses/${id}`, {method: 'DELETE'});
+        if (response.ok) {
+            showToast('Expense deleted');
+            loadRecentExpenses();
+            loadDraftExpenses();
+            loadProcessedExpenses();
+            loadExpenses();
+        }
+    } catch (err) {
+        showToast('Error deleting expense', 'error');
+        console.error(err);
+    }
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        draft: 'bg-yellow-100 text-yellow-800',
+        pending: 'bg-blue-100 text-blue-800',
+        processed: 'bg-green-100 text-green-800'
+    };
+    return badges[status] || 'bg-gray-100 text-gray-800';
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toastMessage');
+
+    toastMessage.textContent = message;
+    toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2 ${
+        type === 'error' ? 'bg-red-600' : 'bg-green-600'
+    } text-white`;
+    toast.classList.remove('hidden');
+
+    setTimeout(() => toast.classList.add('hidden'), 3000);
+}
+
+async function exportExpenses() {
+    window.location.href = '/api/daily-expenses?limit=10000&format=csv';
+}
+</script>
+{% endblock %}

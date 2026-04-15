@@ -163,9 +163,11 @@ class CategoryEngine:
         self._claude_client = None
 
     def _get_claude_client(self):
+        """Get or create AsyncAnthropic client for proper async support."""
         if self._claude_client is None and settings.anthropic_api_key:
             import anthropic
-            self._claude_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+            # Use AsyncAnthropic for proper async/await support
+            self._claude_client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
         return self._claude_client
 
     async def categorize(
@@ -195,7 +197,7 @@ class CategoryEngine:
         # Step 2: Claude Haiku categorization (cheapest model)
         if settings.anthropic_api_key:
             try:
-                category, subcategory, confidence = await self._claude_categorize(
+                category, subcategory, confidence = await self._claude_categorize_with_retry(
                     merchant_name, description_raw, country
                 )
                 # Store as a new rule for future use
@@ -209,7 +211,8 @@ class CategoryEngine:
                 )
                 return category, subcategory, "claude_ai", confidence
             except Exception as e:
-                logger.warning(f"Claude categorization failed: {e}, using fallback")
+                logger.error(f"Claude categorization failed for '{merchant_name}': {type(e).__name__}: {e}")
+                logger.debug(f"Full error details:", exc_info=True)
 
         # Step 3: Simple keyword fallback
         category = self._keyword_fallback(normalized)
@@ -254,7 +257,8 @@ class CategoryEngine:
         return True
 
     async def _lookup_rule(self, normalized: str) -> Optional[CategoryRule]:
-        """Look up category_rules by normalized merchant."""
+        """Look up category_rules by normalized merchant with smart matching."""
+        # Try exact match first (fastest)
         result = await self.db.execute(
             select(CategoryRule)
             .where(
@@ -270,20 +274,293 @@ class CategoryEngine:
             .limit(1)
         )
         rule = result.scalar_one_or_none()
+        if rule:
+            return rule
 
-        # Try partial match if exact not found
-        if not rule:
-            result = await self.db.execute(
-                select(CategoryRule).where(
-                    CategoryRule.is_active == True,
-                )
+        # Try prefix match (e.g., "github" matches "github inc san")
+        # Use SQL LIKE query for efficiency
+        result = await self.db.execute(
+            select(CategoryRule)
+            .where(
+                CategoryRule.is_active == True,
             )
-            all_rules = result.scalars().all()
-            for r in all_rules:
-                if r.normalized_merchant and r.normalized_merchant in normalized:
-                    return r
+            .order_by(
+                # Prioritize: user_override > claude_ai > builtin, then by specificity
+                CategoryRule.source.desc(),
+                CategoryRule.confidence.desc(),
+            )
+        )
+        all_rules = result.scalars().all()
 
-        return rule
+        # Check if any rule is a prefix of the normalized string
+        # Sort by length (longer = more specific) to match most specific first
+        best_match = None
+        best_length = 0
+
+        for r in all_rules:
+            if r.normalized_merchant:
+                # Check if rule matches the start of the merchant name
+                if normalized.startswith(r.normalized_merchant + " ") or normalized == r.normalized_merchant:
+                    rule_len = len(r.normalized_merchant)
+                    # Prefer longer (more specific) matches, and user_override over others
+                    priority = (rule_len, r.source == "user_override", r.source == "claude_ai")
+                    if rule_len > best_length or (rule_len == best_length and priority > (best_length, best_match and best_match.source == "user_override", best_match and best_match.source == "claude_ai")):
+                        best_match = r
+                        best_length = rule_len
+
+        return best_match
+
+    # ------------------------------------------------------------------
+    # Batch categorization (single API call for all unmatched merchants)
+    # ------------------------------------------------------------------
+
+    async def batch_categorize(
+        self,
+        transactions: list[Dict[str, Any]],
+    ) -> list[Dict[str, Any]]:
+        """
+        Two-pass categorization:
+          Pass 1 — match every transaction against the rules table (free).
+          Pass 2 — send ALL unmatched transactions to Claude in ONE batch call.
+        Updates each transaction dict in-place and returns it.
+        """
+        unmatched: list[Tuple[int, Dict[str, Any]]] = []  # (index, txn)
+
+        # ---- Pass 1: rule matching ----
+        for idx, txn in enumerate(transactions):
+            if txn.get("category_source") == "user_override":
+                continue
+
+            merchant = txn.get("merchant_name") or txn.get("description_raw", "")
+            normalized = self._normalize(merchant)
+            rule = await self._lookup_rule(normalized)
+
+            if rule:
+                rule.match_count += 1
+                rule.last_matched_at = datetime.utcnow()
+                await self.db.flush()
+                txn["category_ai"] = rule.category
+                txn["subcategory_ai"] = rule.subcategory
+                txn["category_source"] = "rule"
+                txn["category_confidence"] = float(rule.confidence)
+            else:
+                # Keyword fallback first — it's free
+                kw_cat = self._keyword_fallback(normalized)
+                if kw_cat != "Other":
+                    txn["category_ai"] = kw_cat
+                    txn["subcategory_ai"] = None
+                    txn["category_source"] = "builtin"
+                    txn["category_confidence"] = 0.65
+                else:
+                    unmatched.append((idx, txn))
+
+            # Keep merchant_category in sync
+            if not txn.get("merchant_category") and txn.get("category_ai"):
+                txn["merchant_category"] = txn["category_ai"]
+
+        rule_matched = len(transactions) - len(unmatched)
+        logger.info(
+            f"Batch pass 1 (rules): {rule_matched} matched, "
+            f"{len(unmatched)} need Claude AI"
+        )
+
+        if not unmatched:
+            return transactions
+
+        # ---- Pass 2: single batch Claude call for all unmatched ----
+        if not settings.anthropic_api_key:
+            logger.warning("No Anthropic API key — falling back for all unmatched")
+            for _, txn in unmatched:
+                txn["category_ai"] = "Other"
+                txn["subcategory_ai"] = None
+                txn["category_source"] = "fallback"
+                txn["category_confidence"] = 0.5
+                if not txn.get("merchant_category"):
+                    txn["merchant_category"] = "Other"
+            return transactions
+
+        try:
+            ai_results = await self._batch_claude_categorize(unmatched)
+
+            for list_idx, (txn_idx, txn) in enumerate(unmatched):
+                result = ai_results.get(list_idx)
+                if result:
+                    cat = result.get("category", "Other")
+                    subcat = result.get("subcategory")
+                    conf = float(result.get("confidence", 0.8))
+
+                    # Validate category
+                    if cat not in self.CATEGORIES:
+                        cat = "Other"
+
+                    txn["category_ai"] = cat
+                    txn["subcategory_ai"] = subcat
+                    txn["category_source"] = "claude_ai"
+                    txn["category_confidence"] = round(conf, 2)
+
+                    # Store as rule for future reuse
+                    merchant = txn.get("merchant_name") or txn.get("description_raw", "")
+                    normalized = self._normalize(merchant)
+                    await self._store_rule(
+                        merchant_pattern=merchant,
+                        normalized=normalized,
+                        category=cat,
+                        subcategory=subcat,
+                        source="claude_ai",
+                        confidence=conf,
+                    )
+                else:
+                    txn["category_ai"] = "Other"
+                    txn["subcategory_ai"] = None
+                    txn["category_source"] = "fallback"
+                    txn["category_confidence"] = 0.5
+
+                if not txn.get("merchant_category"):
+                    txn["merchant_category"] = txn["category_ai"]
+
+            logger.info(f"Batch pass 2 (Claude): {len(ai_results)} categorized in 1 API call")
+
+        except Exception as e:
+            logger.error(f"Batch Claude categorization failed: {e}", exc_info=True)
+            for _, txn in unmatched:
+                txn["category_ai"] = self._keyword_fallback(
+                    self._normalize(txn.get("merchant_name") or txn.get("description_raw", ""))
+                )
+                txn["subcategory_ai"] = None
+                txn["category_source"] = "fallback"
+                txn["category_confidence"] = 0.5
+                if not txn.get("merchant_category"):
+                    txn["merchant_category"] = txn["category_ai"]
+
+        return transactions
+
+    async def _batch_claude_categorize(
+        self,
+        unmatched: list[Tuple[int, Dict[str, Any]]],
+        max_retries: int = 3,
+    ) -> Dict[int, Dict[str, Any]]:
+        """
+        Send ALL unmatched transactions to Claude Haiku in ONE API call.
+        Returns {list_index: {category, subcategory, confidence}}.
+        """
+        import asyncio
+
+        client = self._get_claude_client()
+        if not client:
+            raise ValueError("No Anthropic API key")
+
+        categories_str = ", ".join(self.CATEGORIES)
+
+        # Build numbered list of merchants
+        lines = []
+        for i, (_, txn) in enumerate(unmatched, 1):
+            merchant = txn.get("merchant_name") or txn.get("description_raw", "")
+            desc = txn.get("description_raw", "")
+            country = txn.get("merchant_country") or "BD"
+            lines.append(f"{i}. Merchant: \"{merchant}\" | Description: \"{desc}\" | Country: {country}")
+
+        merchants_block = "\n".join(lines)
+
+        prompt = f"""Categorize each financial transaction below into ONE category from this list:
+{categories_str}
+
+Transactions:
+{merchants_block}
+
+Return ONLY a valid JSON array with one object per transaction in the SAME order:
+[
+  {{"index": 1, "category": "...", "subcategory": "...", "confidence": 0.85}},
+  ...
+]
+
+Rules:
+- "subcategory" should be 2-4 words max (e.g., "Online Subscription", "Fast Food")
+- "confidence" is 0.0-1.0
+- If uncertain, use "Other" with low confidence
+- No extra text, just the JSON array
+"""
+
+        for attempt in range(max_retries):
+            try:
+                response = await client.messages.create(
+                    model="claude-haiku-4-5",
+                    max_tokens=max(2000, len(unmatched) * 80),
+                    messages=[{"role": "user", "content": prompt}],
+                )
+
+                raw = response.content[0].text.strip()
+                # Strip markdown code fences
+                if raw.startswith("```"):
+                    raw = "\n".join(raw.split("\n")[1:])
+                if raw.endswith("```"):
+                    raw = "\n".join(raw.split("\n")[:-1])
+
+                results_array = json.loads(raw.strip())
+
+                # Map back to list indices (0-based)
+                results: Dict[int, Dict[str, Any]] = {}
+                for item in results_array:
+                    idx = item.get("index", 0) - 1  # Convert 1-based to 0-based
+                    if 0 <= idx < len(unmatched):
+                        results[idx] = item
+
+                cost = (
+                    (response.usage.input_tokens / 1_000_000 * 0.80)
+                    + (response.usage.output_tokens / 1_000_000 * 4.00)
+                )
+                logger.info(
+                    f"Batch Claude call: {len(unmatched)} transactions, "
+                    f"${cost:.4f} USD "
+                    f"({response.usage.input_tokens} in / {response.usage.output_tokens} out)"
+                )
+                return results
+
+            except Exception as e:
+                is_rate_limit = "rate" in str(e).lower() or "429" in str(e)
+                if attempt < max_retries - 1 and is_rate_limit:
+                    wait_time = 2 ** attempt
+                    logger.warning(
+                        f"Batch rate limit (attempt {attempt + 1}/{max_retries}), "
+                        f"retrying in {wait_time}s..."
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise
+
+        return {}
+
+    # ------------------------------------------------------------------
+    # Legacy single-transaction methods (kept for backward compat)
+    # ------------------------------------------------------------------
+
+    async def _claude_categorize_with_retry(
+        self,
+        merchant_name: Optional[str],
+        description_raw: str,
+        country: str,
+        max_retries: int = 3,
+    ) -> Tuple[str, Optional[str], float]:
+        """Call Claude Haiku with retry logic for rate limiting."""
+        import asyncio
+
+        for attempt in range(max_retries):
+            try:
+                return await self._claude_categorize(merchant_name, description_raw, country)
+            except Exception as e:
+                error_name = type(e).__name__
+                is_rate_limit = "rate" in str(e).lower() or "429" in str(e)
+
+                if attempt < max_retries - 1 and is_rate_limit:
+                    # Exponential backoff: 1s, 2s, 4s
+                    wait_time = 2 ** attempt
+                    logger.warning(
+                        f"Rate limit hit for '{merchant_name}' (attempt {attempt + 1}/{max_retries}), "
+                        f"retrying in {wait_time}s..."
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    # Re-raise on last attempt or non-rate-limit errors
+                    raise
 
     async def _claude_categorize(
         self,
@@ -291,7 +568,7 @@ class CategoryEngine:
         description_raw: str,
         country: str,
     ) -> Tuple[str, Optional[str], float]:
-        """Call Claude Haiku to categorize a merchant."""
+        """Call Claude Haiku to categorize a merchant (async)."""
         client = self._get_claude_client()
         if not client:
             raise ValueError("No Anthropic API key")
@@ -307,7 +584,8 @@ class CategoryEngine:
             f'Return JSON only: {{"category": "...", "subcategory": "...", "confidence": 0.0-1.0}}'
         )
 
-        response = client.messages.create(
+        # Properly await async client call
+        response = await client.messages.create(
             model="claude-haiku-4-5",
             max_tokens=100,
             messages=[{"role": "user", "content": prompt}],
@@ -337,19 +615,28 @@ class CategoryEngine:
         source: str,
         confidence: float,
     ):
-        """Store a new category rule (unless one already exists)."""
+        """Store a new category rule (unless one already exists for this merchant)."""
+        # Check for ANY existing rule for this merchant (regardless of source)
         existing = await self.db.execute(
             select(CategoryRule).where(
                 CategoryRule.normalized_merchant == normalized,
-                CategoryRule.source == source,
-            )
+                CategoryRule.is_active == True,
+            ).order_by(
+                # Prefer keeping user_override rules, update others
+                CategoryRule.source.desc(),
+            ).limit(1)
         )
         rule = existing.scalar_one_or_none()
 
         if rule:
+            # If existing rule is user_override, don't overwrite with AI
+            if rule.source == "user_override":
+                return
+            # Update existing rule with new AI result
             rule.category = category
             rule.subcategory = subcategory
             rule.confidence = Decimal(str(confidence))
+            rule.source = source
             rule.updated_at = datetime.utcnow()
         else:
             rule = CategoryRule(

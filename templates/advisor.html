@@ -59,16 +59,18 @@
       <div class="skeleton h-64"></div>
     </div>
     <div class="skeleton h-40 w-full"></div>
-    <p class="text-center text-sm text-gray-400">Claude is analyzing your spending patterns...</p>
+    <p class="text-center text-sm text-gray-400" id="loadingText">Claude is analyzing your financial data...</p>
   </div>
 
   <!-- Empty State -->
   <div id="emptyState" class="hidden text-center py-20">
     <i class="fas fa-robot text-6xl text-gray-300 mb-4"></i>
     <h3 class="text-xl font-semibold text-gray-500 mb-2">No Report Yet</h3>
-    <p class="text-gray-400 mb-6 max-w-md mx-auto">Generate your first AI-powered financial diagnosis. Claude will analyze your spending and deliver a brutally honest assessment.</p>
+    <p class="text-gray-400 mb-4 max-w-md mx-auto">Click <strong>Generate Report</strong> to get your AI-powered financial diagnosis for the selected month.</p>
+    <!-- Inline error message shown when generation fails -->
+    <div id="generateError" class="hidden max-w-lg mx-auto mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700"></div>
     <button onclick="generateReport()" class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">
-      <i class="fas fa-wand-magic-sparkles"></i> Generate My First Report
+      <i class="fas fa-wand-magic-sparkles"></i> Generate Report
     </button>
   </div>
 
@@ -106,20 +108,24 @@
           <!-- Score breakdown bars -->
           <div class="flex-1 space-y-3" id="scoreBreakdown">
             <div>
-              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Spending Control</span><span class="font-semibold text-gray-700" data-key="spending_control">--/25</span></div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Spending Control</span><span class="font-semibold text-gray-700" data-key="spending_control">--/20</span></div>
               <div class="score-bar-track"><div class="score-bar-fill bg-indigo-500" data-bar="spending_control" style="width:0%"></div></div>
             </div>
             <div>
-              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Savings Mindset</span><span class="font-semibold text-gray-700" data-key="savings_mindset">--/25</span></div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Savings Mindset</span><span class="font-semibold text-gray-700" data-key="savings_mindset">--/20</span></div>
               <div class="score-bar-track"><div class="score-bar-fill bg-emerald-500" data-bar="savings_mindset" style="width:0%"></div></div>
             </div>
             <div>
-              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Consistency</span><span class="font-semibold text-gray-700" data-key="consistency">--/25</span></div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Consistency</span><span class="font-semibold text-gray-700" data-key="consistency">--/20</span></div>
               <div class="score-bar-track"><div class="score-bar-fill bg-amber-500" data-bar="consistency" style="width:0%"></div></div>
             </div>
             <div>
-              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Discipline</span><span class="font-semibold text-gray-700" data-key="discipline">--/25</span></div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Discipline</span><span class="font-semibold text-gray-700" data-key="discipline">--/20</span></div>
               <div class="score-bar-track"><div class="score-bar-fill bg-rose-500" data-bar="discipline" style="width:0%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">Income Health</span><span class="font-semibold text-gray-700" data-key="income_health">--/20</span></div>
+              <div class="score-bar-track"><div class="score-bar-fill bg-teal-500" data-bar="income_health" style="width:0%"></div></div>
             </div>
           </div>
         </div>
@@ -145,6 +151,14 @@
         <i class="fas fa-magnifying-glass-chart text-indigo-400 mr-1"></i> Behavioral Insights
       </h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="insightsGrid"></div>
+    </div>
+
+    <!-- Section 4b: Income Insights -->
+    <div id="incomeInsightsSection">
+      <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+        <i class="fas fa-coins text-teal-400 mr-1"></i> Income Insights
+      </h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="incomeInsightsGrid"></div>
     </div>
 
     <!-- Section 5: Top 3 Mistakes -->
@@ -188,6 +202,35 @@
       </div>
     </div>
 
+    <!-- Section 8b: Income Tips -->
+    <div id="incomeTipsSection">
+      <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+        <i class="fas fa-chart-line text-teal-400 mr-1"></i> Income Growth Tips
+      </h3>
+      <div class="space-y-3" id="incomeTipsList"></div>
+    </div>
+
+    <!-- Section 8c: Savings Analysis -->
+    <div id="savingsAnalysisSection" class="hidden bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+        <i class="fas fa-piggy-bank text-emerald-400 mr-1"></i> Savings Rate Analysis
+      </h3>
+      <div id="savingsAnalysisContent" class="space-y-4"></div>
+    </div>
+
+    <!-- Section 8d: Motivation -->
+    <div id="motivationSection" class="hidden bg-gradient-to-r from-teal-600 to-emerald-600 rounded-2xl p-6 text-white shadow-lg">
+      <div class="flex items-start gap-4">
+        <div class="flex-shrink-0 w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+          <i class="fas fa-rocket text-white text-lg"></i>
+        </div>
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-teal-100 mb-2">Your Advisor Says</h3>
+          <p id="motivationText" class="text-base leading-relaxed font-medium"></p>
+        </div>
+      </div>
+    </div>
+
     <!-- Section 9: Projection Chart -->
     <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
       <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
@@ -215,19 +258,19 @@ const MONTH_NAMES = ['January','February','March','April','May','June','July','A
 let currentYear, currentMonth;
 let projectionChartInstance = null;
 
-// Initialize to last month
+// Initialize to the most recently completed month (where data is most likely to exist)
 (function() {
   const now = new Date();
-  // Default to last month
   if (now.getMonth() === 0) {
+    // January → go back to December of the previous year
     currentYear = now.getFullYear() - 1;
     currentMonth = 12;
   } else {
     currentYear = now.getFullYear();
-    currentMonth = now.getMonth(); // 0-indexed, so this is last month
+    currentMonth = now.getMonth(); // getMonth() is 0-indexed; 0=Jan…3=Apr, so this gives previous month (1-indexed)
   }
   updateMonthLabel();
-  loadReport();
+  loadReport(); // Only checks cache — does NOT auto-generate
 })();
 
 function updateMonthLabel() {
@@ -243,10 +286,15 @@ function changeMonth(delta) {
 }
 
 async function loadReport() {
-  showLoading(true);
+  showLoading(true, 'Checking for saved report...');
   try {
     const res = await fetch(`/api/advisor/report/${currentYear}/${currentMonth}`);
     if (res.status === 404) {
+      // No cached report — show empty state with Generate button (no auto-generate)
+      showEmpty(true);
+      return;
+    }
+    if (!res.ok) {
       showEmpty(true);
       return;
     }
@@ -264,20 +312,29 @@ async function generateReport() {
   const btn = document.getElementById('generateBtn');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-  showLoading(true);
+  // Hide any previous error
+  const errEl = document.getElementById('generateError');
+  if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+  showLoading(true, 'Claude is analyzing your financial data — this takes about 10–20 seconds...');
   try {
     const res = await fetch(`/api/advisor/generate/${currentYear}/${currentMonth}`, { method: 'POST' });
+    const data = await res.json();
     if (!res.ok) {
-      const err = await res.json();
-      alert(err.detail || 'Failed to generate report');
+      // Show error inline in the empty state (no browser alert)
       showEmpty(true);
+      if (errEl) {
+        errEl.textContent = data.detail || 'Failed to generate report. Please try again.';
+        errEl.classList.remove('hidden');
+      }
       return;
     }
-    const data = await res.json();
     renderReport(data);
   } catch (e) {
-    alert('Error: ' + e.message);
     showEmpty(true);
+    if (errEl) {
+      errEl.textContent = 'Network error: ' + e.message;
+      errEl.classList.remove('hidden');
+    }
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Generate Report';
@@ -285,11 +342,13 @@ async function generateReport() {
   }
 }
 
-function showLoading(show) {
+function showLoading(show, text) {
   document.getElementById('loadingState').classList.toggle('hidden', !show);
   if (show) {
     document.getElementById('reportContent').classList.add('hidden');
     document.getElementById('emptyState').classList.add('hidden');
+    const lt = document.getElementById('loadingText');
+    if (lt && text) lt.textContent = text;
   }
 }
 
@@ -325,6 +384,9 @@ function renderReport(data) {
   // Insights
   renderInsights(data.insights || []);
 
+  // Income Insights
+  renderIncomeInsights(data.income_insights || []);
+
   // Mistakes
   renderMistakes(data.mistakes || []);
 
@@ -336,6 +398,15 @@ function renderReport(data) {
 
   // Top Recommendation
   document.getElementById('topRecommendation').textContent = data.top_recommendation || '';
+
+  // Income Tips
+  renderIncomeTips(data.income_tips || []);
+
+  // Savings Analysis
+  renderSavingsAnalysis(data.savings_analysis || null);
+
+  // Motivation
+  renderMotivation(data.motivation || null);
 
   // Projection Chart
   renderProjection(data.projection || {});
@@ -367,12 +438,14 @@ function renderGauge(score) {
 }
 
 function renderScoreBreakdown(breakdown) {
-  const keys = ['spending_control', 'savings_mindset', 'consistency', 'discipline'];
+  const keys = ['spending_control', 'savings_mindset', 'consistency', 'discipline', 'income_health'];
   keys.forEach(key => {
     const val = breakdown[key] || 0;
-    const pct = (val / 25) * 100;
-    document.querySelector(`[data-key="${key}"]`).textContent = `${val}/25`;
-    document.querySelector(`[data-bar="${key}"]`).style.width = `${pct}%`;
+    const pct = (val / 20) * 100;
+    const keyEl = document.querySelector(`[data-key="${key}"]`);
+    const barEl = document.querySelector(`[data-bar="${key}"]`);
+    if (keyEl) keyEl.textContent = `${val}/20`;
+    if (barEl) barEl.style.width = `${pct}%`;
   });
 }
 
@@ -555,6 +628,106 @@ function renderProjection(projection) {
       }
     }
   });
+}
+
+function renderIncomeInsights(incomeInsights) {
+  const section = document.getElementById('incomeInsightsSection');
+  const grid = document.getElementById('incomeInsightsGrid');
+  if (!incomeInsights || !incomeInsights.length) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+  grid.innerHTML = incomeInsights.map(i => `
+    <div class="section-card bg-white rounded-xl p-4 border border-teal-100 shadow-sm">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center flex-shrink-0">
+          <i class="fas ${i.icon || 'fa-coins'} text-teal-500 text-sm"></i>
+        </div>
+        <h4 class="text-sm font-semibold text-gray-800">${esc(i.title)}</h4>
+      </div>
+      <p class="text-xs text-gray-500 leading-relaxed">${esc(i.text)}</p>
+    </div>
+  `).join('');
+}
+
+function renderIncomeTips(tips) {
+  const section = document.getElementById('incomeTipsSection');
+  const list = document.getElementById('incomeTipsList');
+  if (!tips || !tips.length) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+  list.innerHTML = tips.map(t => `
+    <div class="section-card bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-chart-line text-teal-500 text-xs"></i>
+          </div>
+          <h4 class="text-sm font-semibold text-gray-800">${esc(t.title)}</h4>
+        </div>
+        ${t.potential_bdt ? `<span class="flex-shrink-0 text-xs font-bold bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">+BDT ${(t.potential_bdt || 0).toLocaleString()}/mo</span>` : ''}
+      </div>
+      <p class="text-xs text-gray-500 mt-2 leading-relaxed">${esc(t.detail)}</p>
+    </div>
+  `).join('');
+}
+
+function renderSavingsAnalysis(analysis) {
+  const section = document.getElementById('savingsAnalysisSection');
+  const content = document.getElementById('savingsAnalysisContent');
+  if (!analysis || analysis.true_savings_rate_pct === null || analysis.true_savings_rate_pct === undefined) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+
+  const rate = analysis.true_savings_rate_pct || 0;
+  const target = analysis.target_savings_rate_pct || 20;
+  const gap = analysis.monthly_gap_bdt;
+
+  const rateColor = rate >= target ? 'text-emerald-600' : rate >= 10 ? 'text-amber-600' : 'text-red-600';
+  const barPct = Math.min(Math.max((rate / target) * 100, 0), 100);
+  const barColor = rate >= target ? 'bg-emerald-500' : rate >= 10 ? 'bg-amber-500' : 'bg-red-500';
+
+  content.innerHTML = `
+    <div class="flex items-end gap-6">
+      <div>
+        <p class="text-xs text-gray-500 mb-1">Current Savings Rate</p>
+        <p class="text-3xl font-bold ${rateColor}">${rate.toFixed(1)}%</p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 mb-1">Target</p>
+        <p class="text-xl font-semibold text-gray-400">${target}%</p>
+      </div>
+      ${gap && gap > 0 ? `<div class="ml-auto">
+        <p class="text-xs text-gray-500 mb-1">Monthly Gap</p>
+        <p class="text-base font-bold text-red-500">BDT ${gap.toLocaleString()}</p>
+      </div>` : ''}
+    </div>
+    <div>
+      <div class="flex justify-between text-xs text-gray-400 mb-1">
+        <span>Progress toward ${target}% target</span>
+        <span>${Math.min(barPct, 100).toFixed(0)}%</span>
+      </div>
+      <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
+        <div class="h-3 rounded-full ${barColor} transition-all duration-700" style="width: ${barPct}%"></div>
+      </div>
+    </div>
+    ${analysis.assessment ? `<p class="text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-lg p-3">${esc(analysis.assessment)}</p>` : ''}
+  `;
+}
+
+function renderMotivation(motivation) {
+  const section = document.getElementById('motivationSection');
+  if (!motivation) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+  document.getElementById('motivationText').textContent = motivation;
 }
 
 function esc(str) {

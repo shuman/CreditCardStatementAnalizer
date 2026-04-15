@@ -34,6 +34,7 @@
     <div class="flex items-center gap-2 mb-6">
         <button data-filter="all" class="filter-pill active px-3 py-1 rounded-full text-xs font-medium border transition-colors">All</button>
         <button data-filter="spending" class="filter-pill px-3 py-1 rounded-full text-xs font-medium border transition-colors">Spending</button>
+        <button data-filter="income" class="filter-pill px-3 py-1 rounded-full text-xs font-medium border transition-colors">Income</button>
         <button data-filter="habits" class="filter-pill px-3 py-1 rounded-full text-xs font-medium border transition-colors">Habits</button>
         <button data-filter="health" class="filter-pill px-3 py-1 rounded-full text-xs font-medium border transition-colors">Health</button>
     </div>
@@ -53,6 +54,22 @@
 
     <!-- Report cards grid -->
     <div id="reportGrid" class="hidden grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));">
+
+        <!-- #3 Category Spending (Wide) -->
+        <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" style="grid-column: span 2;" data-tags="spending">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center"><i class="fas fa-layer-group text-cyan-500 text-sm"></i></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Category Spending</p>
+                        <p id="card3-metric" class="text-xs text-gray-400"></p>
+                    </div>
+                </div>
+                <button class="expand-btn text-gray-300 hover:text-indigo-500 transition-colors" data-report="monthly_spending"><i class="fas fa-expand-alt text-sm"></i></button>
+            </div>
+            <div class="flex-1 px-4 pb-1 min-h-0 overflow-y-auto" id="card3-body"></div>
+            <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="card3-insight"></div>
+        </div>
 
         <!-- #1 Monthly Spending Breakdown -->
         <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" data-tags="spending">
@@ -159,6 +176,92 @@
                 <div id="calendarGrid" class="grid grid-cols-7 gap-1 w-full max-w-[260px]"></div>
             </div>
             <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="card18-insight"></div>
+        </div>
+
+        <!-- Income vs Expense 6-Month -->
+        <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" style="grid-column: span 2;" data-tags="income spending">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center"><i class="fas fa-balance-scale text-green-500 text-sm"></i></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Income vs Expenses</p>
+                        <p id="cardIVE-metric" class="text-xs text-gray-400"></p>
+                    </div>
+                </div>
+                <button class="expand-btn text-gray-300 hover:text-green-500 transition-colors" data-report="income_vs_expense"><i class="fas fa-expand-alt text-sm"></i></button>
+            </div>
+            <div class="flex-1 px-4 pb-1 min-h-0"><canvas id="chartIVE"></canvas></div>
+            <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="cardIVE-insight"></div>
+        </div>
+
+        <!-- Income Summary -->
+        <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" data-tags="income">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center"><i class="fas fa-hand-holding-usd text-emerald-500 text-sm"></i></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Income Summary</p>
+                        <p id="cardIS-metric" class="text-xs text-gray-400"></p>
+                    </div>
+                </div>
+                <button class="expand-btn text-gray-300 hover:text-emerald-500 transition-colors" data-report="income_summary"><i class="fas fa-expand-alt text-sm"></i></button>
+            </div>
+            <div class="flex-1 px-4 pb-1 min-h-0"><canvas id="chartIS"></canvas></div>
+            <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="cardIS-insight"></div>
+        </div>
+
+        <!-- Cash Expense Breakdown -->
+        <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" data-tags="spending income">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center"><i class="fas fa-coins text-orange-500 text-sm"></i></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Cash Expenses</p>
+                        <p id="cardCE-metric" class="text-xs text-gray-400"></p>
+                    </div>
+                </div>
+                <button class="expand-btn text-gray-300 hover:text-orange-500 transition-colors" data-report="cash_expense_breakdown"><i class="fas fa-expand-alt text-sm"></i></button>
+            </div>
+            <div class="flex-1 px-4 pb-1 min-h-0 relative">
+                <div id="cardCE-empty" class="hidden absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-2">
+                    <i class="fas fa-coins text-3xl opacity-30"></i>
+                    <p class="text-xs">No cash expenses logged this month</p>
+                </div>
+                <canvas id="chartCE"></canvas>
+            </div>
+            <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="cardCE-insight"></div>
+        </div>
+
+        <!-- Payment Method Distribution -->
+        <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" data-tags="spending habits">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center"><i class="fas fa-wallet text-violet-500 text-sm"></i></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Payment Methods</p>
+                        <p id="cardPM-metric" class="text-xs text-gray-400"></p>
+                    </div>
+                </div>
+                <button class="expand-btn text-gray-300 hover:text-violet-500 transition-colors" data-report="payment_method_distribution"><i class="fas fa-expand-alt text-sm"></i></button>
+            </div>
+            <div class="flex-1 px-4 pb-1 min-h-0"><canvas id="chartPM"></canvas></div>
+            <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="cardPM-insight"></div>
+        </div>
+
+        <!-- Budget Burn-Down -->
+        <div class="report-card bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-[380px] flex flex-col" data-tags="health spending">
+            <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center"><i class="fas fa-fire text-red-500 text-sm"></i></div>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Budget Burn-Down</p>
+                        <p id="cardBB-metric" class="text-xs text-gray-400"></p>
+                    </div>
+                </div>
+                <button class="expand-btn text-gray-300 hover:text-red-500 transition-colors" data-report="budget_burndown"><i class="fas fa-expand-alt text-sm"></i></button>
+            </div>
+            <div class="flex-1 px-4 pb-1 min-h-0"><canvas id="chartBB"></canvas></div>
+            <div class="px-4 py-2 border-t border-gray-50 text-xs text-gray-400" id="cardBB-insight"></div>
         </div>
     </div>
 </div>
@@ -314,17 +417,40 @@
                 <p class="text-sm font-semibold mb-2">Total: ${fmt(data.total)} (prev: ${fmt(data.prev_total)})</p>
                 <table class="w-full"><thead><tr class="text-xs text-gray-400 border-b"><th class="text-left py-1">Category</th><th class="text-right">Amount</th><th class="text-right">%</th><th class="text-right">MoM</th></tr></thead><tbody>${rows}</tbody></table>`;
         } else if (reportId === 'merchant_concentration') {
-            const rows = (data.merchants || []).map(m =>
+            const rows = [...(data.merchants || [])].sort((a, b) => b.amount - a.amount).map(m =>
                 `<tr class="border-b border-gray-50"><td class="py-1.5 text-sm">${m.name}</td><td class="text-right text-sm font-medium">${fmt(m.amount)}</td><td class="text-right text-sm text-gray-500">${m.pct}%</td><td class="text-right text-sm text-gray-400">${m.txns} txns</td></tr>`
             ).join('');
             html = `<p class="text-sm text-gray-500 mb-3">${data.insight}</p><table class="w-full"><thead><tr class="text-xs text-gray-400 border-b"><th class="text-left py-1">Merchant</th><th class="text-right">Amount</th><th class="text-right">%</th><th class="text-right">Txns</th></tr></thead><tbody>${rows}</tbody></table>`;
         } else if (reportId === 'subscription_waste') {
-            const rows = (data.subscriptions || []).map(s =>
-                `<tr class="border-b border-gray-50"><td class="py-1.5 text-sm">${s.merchant}</td><td class="text-right text-sm font-medium">${fmt(s.monthly)}/mo</td><td class="text-right text-sm text-gray-500">${fmt(s.annual)}/yr</td></tr>`
-            ).join('');
-            html = `<div class="flex gap-4 mb-4"><div class="bg-rose-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">Monthly</p><p class="text-lg font-bold text-rose-600">${fmt(data.total_monthly)}</p></div><div class="bg-rose-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">Annualized</p><p class="text-lg font-bold text-rose-600">${fmt(data.total_annual)}</p></div></div>
-                ${(data.duplicate_services || []).length > 0 ? '<p class="text-sm text-amber-600 mb-2"><i class="fas fa-exclamation-triangle mr-1"></i>Duplicates: ' + data.duplicate_services.join(', ') + '</p>' : ''}
-                <table class="w-full"><thead><tr class="text-xs text-gray-400 border-b"><th class="text-left py-1">Subscription</th><th class="text-right">Monthly</th><th class="text-right">Annual</th></tr></thead><tbody>${rows}</tbody></table>`;
+            const subcatColors = {
+                'AI Services': '#8b5cf6', 'Dev Tools': '#6366f1',
+                'Cloud Services': '#06b6d4', 'Cloud Storage': '#0ea5e9',
+                'Design Tools': '#ec4899', 'Productivity': '#10b981',
+                'Security': '#f59e0b', 'Domain / Hosting': '#f97316',
+                'App Store': '#14b8a6', 'Other': '#9ca3af'
+            };
+            const rows = (data.subscriptions || []).map(s => {
+                const dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${subcatColors[s.subcategory] || '#9ca3af'};margin-right:6px;vertical-align:middle;"></span>`;
+                return `<tr class="border-b border-gray-50">
+                    <td class="py-1.5 text-sm">${dot}${s.merchant}</td>
+                    <td class="text-center text-xs text-gray-500">${s.subcategory}</td>
+                    <td class="text-right text-sm font-medium">${fmt(s.monthly)}/mo</td>
+                    <td class="text-center text-xs text-gray-400">${s.frequency || 'monthly'}</td>
+                    <td class="text-right text-sm text-gray-500">${fmt(s.annual)}/yr</td>
+                </tr>`;
+            }).join('');
+            // Subcategory legend
+            const bySub = data.by_subcategory || [];
+            const legendHtml = bySub.map(sc =>
+                `<span class="inline-flex items-center gap-1 text-xs text-gray-600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sc.color};"></span>${sc.name} (${sc.count})</span>`
+            ).join('&nbsp;&nbsp;');
+            html = `<div class="flex gap-4 mb-4 flex-wrap">
+                <div class="bg-indigo-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">Monthly</p><p class="text-lg font-bold text-indigo-600">${fmt(data.total_monthly)}</p></div>
+                <div class="bg-indigo-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">Annualized</p><p class="text-lg font-bold text-indigo-600">${fmt(data.total_annual)}</p></div>
+            </div>
+                <div class="mb-3 flex flex-wrap gap-2">${legendHtml}</div>
+                ${(data.duplicate_services || []).length > 0 ? '<p class="text-sm text-amber-600 mb-2"><i class="fas fa-exclamation-triangle mr-1"></i>Duplicate across cards: ' + data.duplicate_services.join(', ') + '</p>' : ''}
+                <table class="w-full"><thead><tr class="text-xs text-gray-400 border-b"><th class="text-left py-1">Subscription</th><th class="text-center">Type</th><th class="text-right">Monthly</th><th class="text-center">Freq</th><th class="text-right">Annual</th></tr></thead><tbody>${rows}</tbody></table>`;
         } else if (reportId === 'lifestyle_creep') {
             html = `<div class="mb-4"><canvas id="modalChart" height="200"></canvas></div>
                 <div class="flex gap-4"><div class="bg-teal-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">6-Month Trend</p><p class="text-lg font-bold ${data.trend_direction === 'increasing' ? 'text-red-600' : data.trend_direction === 'decreasing' ? 'text-green-600' : 'text-gray-600'}">${data.trend_pct > 0 ? '+' : ''}${data.trend_pct}%</p></div>
@@ -346,6 +472,69 @@
                 <div class="bg-gray-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">Best Streak</p><p class="text-lg font-bold text-gray-700">${data.best_streak} days</p></div>
                 <div class="bg-gray-50 rounded-lg px-4 py-2"><p class="text-xs text-gray-500">Goal</p><p class="text-lg font-bold text-gray-700">${data.goal} days</p></div></div>
                 <div class="grid grid-cols-7 gap-1 max-w-md">${calHtml}</div>`;
+        } else if (reportId === 'income_vs_expense') {
+            const months = data.months || [];
+            const rows = months.map(m =>
+                `<tr class="border-b border-gray-50"><td class="py-1.5 text-sm">${m.month}</td><td class="text-right text-sm text-emerald-600">${fmt(m.income)}</td><td class="text-right text-sm text-indigo-600">${fmt(m.credit_card)}</td><td class="text-right text-sm text-orange-500">${fmt(m.cash)}</td><td class="text-right text-sm font-semibold ${m.net >= 0 ? 'text-teal-600' : 'text-red-500'}">${fmt(m.net)}</td></tr>`
+            ).join('');
+            html = `<div class="flex flex-wrap gap-3 mb-4">
+                <div class="bg-emerald-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Income</p><p class="text-base font-bold text-emerald-600">${fmt(data.income_total)}</p></div>
+                <div class="bg-indigo-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Credit Card</p><p class="text-base font-bold text-indigo-600">${fmt(data.credit_card_total)}</p></div>
+                <div class="bg-orange-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Cash</p><p class="text-base font-bold text-orange-500">${fmt(data.cash_total)}</p></div>
+                <div class="bg-teal-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Net Flow</p><p class="text-base font-bold ${(data.net_flow||0)>=0?'text-teal-600':'text-red-500'}">${fmt(data.net_flow)}</p></div>
+                <div class="bg-gray-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Savings Rate</p><p class="text-base font-bold text-gray-700">${(data.savings_rate_pct||0).toFixed(1)}%</p></div>
+            </div>
+            <table class="w-full"><thead><tr class="text-xs text-gray-400 border-b"><th class="text-left py-1">Month</th><th class="text-right">Income</th><th class="text-right">CC</th><th class="text-right">Cash</th><th class="text-right">Net</th></tr></thead><tbody>${rows}</tbody></table>`;
+        } else if (reportId === 'income_summary') {
+            const sources = data.sources || [];
+            const rows = sources.map(s =>
+                `<tr class="border-b border-gray-50"><td class="py-1.5 text-sm capitalize">${s.name.replace(/_/g,' ')}</td><td class="text-right text-sm font-medium">${fmt(s.amount)}</td><td class="text-right text-sm text-gray-500">${s.pct}%</td></tr>`
+            ).join('');
+            html = `<div class="flex gap-3 mb-4">
+                <div class="bg-emerald-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Total Income</p><p class="text-base font-bold text-emerald-600">${fmt(data.total)}</p></div>
+                <div class="bg-gray-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Entries</p><p class="text-base font-bold text-gray-700">${data.count}</p></div>
+                <div class="bg-gray-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Avg/Entry</p><p class="text-base font-bold text-gray-700">${fmt(data.avg_per_entry)}</p></div>
+            </div>
+            <table class="w-full"><thead><tr class="text-xs text-gray-400 border-b"><th class="text-left py-1">Source</th><th class="text-right">Amount</th><th class="text-right">%</th></tr></thead><tbody>${rows}</tbody></table>`;
+        } else if (reportId === 'cash_expense_breakdown') {
+            const cats = data.categories || [];
+            const pms = data.payment_methods || [];
+            const catRows = cats.map(c =>
+                `<tr class="border-b border-gray-50"><td class="py-1.5 text-sm">${c.name}</td><td class="text-right text-sm font-medium">${fmt(c.amount)}</td><td class="text-right text-sm text-gray-500">${c.pct}%</td></tr>`
+            ).join('');
+            const pmRows = pms.map(p =>
+                `<tr class="border-b border-gray-50"><td class="py-1.5 text-sm capitalize">${(PM_LABELS2[p.method]||p.method)}</td><td class="text-right text-sm font-medium">${fmt(p.amount)}</td><td class="text-right text-sm text-gray-500">${p.pct}%</td><td class="text-right text-sm text-gray-400">${p.txns} txns</td></tr>`
+            ).join('');
+            html = `<div class="flex gap-3 mb-4">
+                <div class="bg-orange-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Total Cash</p><p class="text-base font-bold text-orange-600">${fmt(data.total)}</p></div>
+                <div class="bg-gray-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Entries</p><p class="text-base font-bold text-gray-700">${data.count}</p></div>
+            </div>
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">By Category</p>
+            <table class="w-full mb-4"><thead><tr class="text-xs text-gray-400 border-b"><th class="text-left py-1">Category</th><th class="text-right">Amount</th><th class="text-right">%</th></tr></thead><tbody>${catRows}</tbody></table>
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">By Payment Method</p>
+            <table class="w-full"><thead><tr class="text-xs text-gray-400 border-b"><th class="text-left py-1">Method</th><th class="text-right">Amount</th><th class="text-right">%</th><th class="text-right">Txns</th></tr></thead><tbody>${pmRows}</tbody></table>`;
+        } else if (reportId === 'payment_method_distribution') {
+            const methods = data.methods || [];
+            const rows = methods.map(m =>
+                `<tr class="border-b border-gray-50"><td class="py-1.5 text-sm">${PM_LABELS2[m.method]||m.method}</td><td class="text-right text-sm font-medium">${fmt(m.amount)}</td><td class="text-right text-sm text-gray-500">${m.pct}%</td><td class="text-right text-sm text-gray-400">${m.txns} txns</td></tr>`
+            ).join('');
+            html = `<div class="flex gap-3 mb-4">
+                <div class="bg-violet-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Total</p><p class="text-base font-bold text-violet-600">${fmt(data.total)}</p></div>
+            </div>
+            <table class="w-full"><thead><tr class="text-xs text-gray-400 border-b"><th class="text-left py-1">Method</th><th class="text-right">Amount</th><th class="text-right">%</th><th class="text-right">Txns</th></tr></thead><tbody>${rows}</tbody></table>`;
+        } else if (reportId === 'budget_burndown') {
+            if (!data.has_budget) {
+                html = `<p class="text-gray-500 text-sm">No budgets set for this period. Set category budgets to track burn-down.</p>`;
+            } else {
+                const pct = data.total_budget > 0 ? (data.total_spent / data.total_budget * 100).toFixed(1) : 0;
+                html = `<div class="flex flex-wrap gap-3 mb-4">
+                    <div class="bg-indigo-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Total Budget</p><p class="text-base font-bold text-indigo-600">${fmt(data.total_budget)}</p></div>
+                    <div class="bg-orange-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Spent</p><p class="text-base font-bold text-orange-500">${fmt(data.total_spent)}</p></div>
+                    <div class="bg-gray-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Used</p><p class="text-base font-bold ${pct>100?'text-red-600':'text-gray-700'}">${pct}%</p></div>
+                    <div class="bg-teal-50 rounded-lg px-3 py-2"><p class="text-xs text-gray-500">Projected</p><p class="text-base font-bold ${data.projected_end>data.total_budget?'text-red-600':'text-teal-600'}">${fmt(data.projected_end)}</p></div>
+                </div>
+                <div class="mb-4"><canvas id="modalChart" height="180"></canvas></div>`;
+            }
         }
         const titles = {
             monthly_spending: 'Monthly Spending Breakdown',
@@ -354,6 +543,11 @@
             lifestyle_creep: 'Lifestyle Creep Tracker',
             health_score: 'Financial Health Score',
             no_spend_tracker: 'No-Spend Day Tracker',
+            income_vs_expense: 'Income vs Expense',
+            income_summary: 'Income Summary',
+            cash_expense_breakdown: 'Cash Expense Breakdown',
+            payment_method_distribution: 'Payment Method Distribution',
+            budget_burndown: 'Budget Burn-Down',
         };
         openModal(titles[reportId] || 'Report', html);
 
@@ -362,6 +556,20 @@
         if (modalCanvas) {
             if (reportId === 'monthly_spending') renderDoughnut(modalCanvas, data);
             if (reportId === 'lifestyle_creep') renderLineChart(modalCanvas, data);
+            if (reportId === 'budget_burndown' && data.has_budget) {
+                const days = data.days || [];
+                charts['modalChart'] = new Chart(modalCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: days.map(d => d.day),
+                        datasets: [
+                            { label: 'Actual Spend', data: days.map(d => d.is_future ? null : d.cumulative), borderColor: data.projected_end > data.total_budget ? '#ef4444' : '#6366f1', backgroundColor: 'rgba(99,102,241,0.08)', fill: true, tension: 0.2, pointRadius: 0, spanGaps: false },
+                            { label: 'Budget Pace', data: days.map(d => d.pace), borderColor: '#10b981', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, fill: false }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top', labels: { font: { size: 10 } } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) } } }, scales: { x: { grid: { display: false }, ticks: { font: { size: 9 }, maxTicksLimit: 10 } }, y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 }, callback: v => fmtShort(v) } } } }
+                });
+            }
         }
     }
 
@@ -388,9 +596,11 @@
             // Populate accounts
             if (data.accounts) populateAccounts(data.accounts);
 
-            // Check if there's any data
+            // Check if there's any data (credit card, cash, or income)
             const ms = data.monthly_spending || {};
-            const hasData = (ms.categories || []).length > 0;
+            const ce = data.cash_expense_breakdown || {};
+            const is_ = data.income_summary || {};
+            const hasData = (ms.categories || []).length > 0 || (ce.total || 0) > 0 || (is_.total || 0) > 0;
             if (!hasData) {
                 empty.classList.remove('hidden');
                 return;
@@ -409,10 +619,16 @@
         destroyCharts();
         renderCard1(data.monthly_spending);
         renderCard2(data.merchant_concentration);
+        renderCard3(data.monthly_spending);
         renderCard7(data.subscription_waste);
         renderCard8(data.lifestyle_creep);
         renderCard12(data.health_score);
         renderCard18(data.no_spend_tracker);
+        renderCardIVE(data.income_vs_expense);
+        renderCardIS(data.income_summary);
+        renderCardCE(data.cash_expense_breakdown);
+        renderCardPM(data.payment_method_distribution);
+        renderCardBB(data.budget_burndown);
     }
 
     function destroyCharts() {
@@ -433,7 +649,7 @@
         if (!data) return;
         document.getElementById('card2-metric').textContent = `${data.total_merchants} merchants`;
         document.getElementById('card2-insight').textContent = data.insight || '';
-        const merchants = (data.merchants || []).slice(0, 10).reverse();
+        const merchants = [...(data.merchants || [])].sort((a, b) => b.amount - a.amount).slice(0, 10);
         charts['chart2'] = new Chart(document.getElementById('chart2'), {
             type: 'bar',
             data: {
@@ -453,31 +669,81 @@
         });
     }
 
+    function renderCard3(data) {
+        if (!data) return;
+        const cats = data.categories || [];
+        document.getElementById('card3-metric').textContent = `Total: ${fmt(data.total)} | ${cats.length} categories`;
+        const topCat = cats[0];
+        document.getElementById('card3-insight').textContent = topCat ? `Top: ${topCat.name} (${topCat.pct}%)` : '';
+
+        const body = document.getElementById('card3-body');
+        const rows = cats.map((c, i) => {
+            const color = CHART_COLORS[i % CHART_COLORS.length];
+            const changeColor = c.change_pct > 0 ? 'text-red-500' : c.change_pct < 0 ? 'text-green-500' : 'text-gray-300';
+            const arrow = c.change_pct > 0 ? '&#9650;' : c.change_pct < 0 ? '&#9660;' : '';
+            return `<div class="flex items-center gap-2" style="height:28px;">
+                <div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:${color};"></div>
+                <span class="text-xs font-medium text-gray-700 flex-shrink-0">${c.name}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 bg-gray-100 rounded-full h-1.5 min-w-[40px]">
+                            <div class="h-1.5 rounded-full" style="width:${Math.max(c.pct, 1)}%;background:${color};"></div>
+                        </div>
+                        <span class="text-[10px] text-gray-400 flex-shrink-0 w-7 text-right">${c.pct}%</span>
+                    </div>
+                </div>
+                <span class="text-xs font-bold text-gray-800 w-20 text-right flex-shrink-0 tabular-nums">${fmtShort(c.amount)}</span>
+                <span class="text-[10px] ${changeColor} w-12 text-right flex-shrink-0 tabular-nums">${arrow}${c.change_pct > 0 ? '+' : ''}${c.change_pct}%</span>
+            </div>`;
+        }).join('');
+        body.innerHTML = rows;
+    }
+
     function renderCard7(data) {
         if (!data) return;
+        const subcatColors = {
+            'AI Services': '#8b5cf6', 'Dev Tools': '#6366f1',
+            'Cloud Services': '#06b6d4', 'Cloud Storage': '#0ea5e9',
+            'Design Tools': '#ec4899', 'Productivity': '#10b981',
+            'Security': '#f59e0b', 'Domain / Hosting': '#f97316',
+            'App Store': '#14b8a6', 'Other': '#9ca3af'
+        };
         document.getElementById('card7-metric').textContent = `Monthly: ${fmt(data.total_monthly)}`;
         document.getElementById('card7-insight').textContent = `Annual: ${fmt(data.total_annual)}`;
         const subs = (data.subscriptions || []).slice(0, 8);
+        if (!subs.length) {
+            document.getElementById('card7-insight').textContent = 'No software subscriptions';
+            return;
+        }
         charts['chart7'] = new Chart(document.getElementById('chart7'), {
             type: 'bar',
             data: {
                 labels: subs.map(s => truncate(s.merchant, 15)),
                 datasets: [{
-                    label: 'Monthly',
+                    label: 'Monthly Cost',
                     data: subs.map(s => s.monthly),
-                    backgroundColor: '#f43f5e',
-                    borderRadius: 4,
-                }, {
-                    label: 'Annual',
-                    data: subs.map(s => s.annual),
-                    backgroundColor: '#fecdd3',
+                    backgroundColor: subs.map(s => subcatColors[s.subcategory] || '#9ca3af'),
                     borderRadius: 4,
                 }]
             },
             options: {
+                indexAxis: 'y',
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10 } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) } } },
-                scales: { x: { ticks: { font: { size: 9 } }, grid: { display: false } }, y: { display: false } }
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const s = subs[ctx.dataIndex];
+                                return `${fmt(ctx.raw)}/mo | ${s.subcategory} | Annual: ${fmt(s.annual)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { display: false },
+                    y: { ticks: { font: { size: 10 } }, grid: { display: false } }
+                }
             }
         });
     }
@@ -534,6 +800,170 @@
     }
 
     // --- Shared chart renderers ---
+
+    // Income vs Expense 6-Month Grouped Bar
+    function renderCardIVE(data) {
+        if (!data) return;
+        const net = data.net_flow || 0;
+        const rate = data.savings_rate_pct || 0;
+        document.getElementById('cardIVE-metric').textContent = `Net: ${fmt(net)} | Savings: ${rate.toFixed(1)}%`;
+        document.getElementById('cardIVE-insight').textContent = `Income: ${fmt(data.income_total)} | CC: ${fmt(data.credit_card_total)} | Cash: ${fmt(data.cash_total)}`;
+        const months = data.months || [];
+        if (!months.length) return;
+        charts['chartIVE'] = new Chart(document.getElementById('chartIVE'), {
+            type: 'bar',
+            data: {
+                labels: months.map(m => m.month),
+                datasets: [
+                    { label: 'Income', data: months.map(m => m.income), backgroundColor: '#10b981', borderRadius: 4, order: 2 },
+                    { label: 'Credit Card', data: months.map(m => m.credit_card), backgroundColor: '#6366f1', borderRadius: 4, order: 2 },
+                    { label: 'Cash', data: months.map(m => m.cash), backgroundColor: '#fb923c', borderRadius: 4, order: 2 },
+                    { label: 'Net', data: months.map(m => m.net), type: 'line', borderColor: '#14b8a6', borderWidth: 2, borderDash: [5, 3], pointRadius: 3, fill: false, order: 1 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) } } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                    y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 }, callback: v => fmtShort(v) } }
+                }
+            }
+        });
+    }
+
+    // Income Summary Horizontal Bar
+    function renderCardIS(data) {
+        if (!data) return;
+        document.getElementById('cardIS-metric').textContent = `Total: ${fmt(data.total)} | ${data.count} entries`;
+        document.getElementById('cardIS-insight').textContent = data.sources.length ? `Top: ${data.sources[0].name} (${data.sources[0].pct}%)` : 'No income logged';
+        const sources = data.sources || [];
+        if (!sources.length) return;
+        const INCOME_COLORS2 = { salary: '#10b981', freelance: '#6366f1', business: '#f59e0b', investment: '#14b8a6', gift: '#ec4899', side_income: '#8b5cf6', refund: '#06b6d4', bonus: '#f97316', other: '#9ca3af' };
+        charts['chartIS'] = new Chart(document.getElementById('chartIS'), {
+            type: 'bar',
+            data: {
+                labels: sources.map(s => s.name.charAt(0).toUpperCase() + s.name.slice(1).replace(/_/g, ' ')),
+                datasets: [{ data: sources.map(s => s.amount), backgroundColor: sources.map(s => INCOME_COLORS2[s.name] || '#9ca3af'), borderRadius: 4 }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) + ' (' + sources[ctx.dataIndex].pct + '%)' } } },
+                scales: { x: { display: false }, y: { ticks: { font: { size: 11 } }, grid: { display: false } } }
+            }
+        });
+    }
+
+    // Cash Expense Breakdown Doughnut
+    const PM_LABELS2 = { cash: 'Cash', bkash: 'bKash', nagad: 'Nagad', rocket: 'Rocket', card_estimate: 'Card (Est.)' };
+    function renderCardCE(data) {
+        if (!data) return;
+        const empty = document.getElementById('cardCE-empty');
+        document.getElementById('cardCE-metric').textContent = data.total > 0 ? `Total: ${fmt(data.total)} | ${data.count} entries` : 'No cash expenses this month';
+        const cats = data.categories || [];
+        const pms = data.payment_methods || [];
+        const topPm = pms[0] ? (PM_LABELS2[pms[0].method] || pms[0].method) + ' ' + pms[0].pct + '%' : '';
+        document.getElementById('cardCE-insight').textContent = topPm ? `Top method: ${topPm}` : '';
+        if (!cats.length) {
+            if (empty) empty.classList.remove('hidden');
+            document.getElementById('chartCE').style.display = 'none';
+            return;
+        }
+        if (empty) empty.classList.add('hidden');
+        document.getElementById('chartCE').style.display = '';
+        charts['chartCE'] = new Chart(document.getElementById('chartCE'), {
+            type: 'doughnut',
+            data: {
+                labels: cats.map(c => c.name),
+                datasets: [{ data: cats.map(c => c.amount), backgroundColor: CHART_COLORS.slice(0, cats.length), borderWidth: 0 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '65%',
+                plugins: {
+                    legend: { position: 'right', labels: { font: { size: 10 }, boxWidth: 10, padding: 6 } },
+                    tooltip: { callbacks: { label: ctx => cats[ctx.dataIndex].name + ': ' + fmt(ctx.raw) + ' (' + cats[ctx.dataIndex].pct + '%)' } }
+                }
+            }
+        });
+    }
+
+    // Payment Method Distribution Doughnut
+    const PM_COLORS2 = { cash: '#f59e0b', bkash: '#ec4899', nagad: '#f97316', rocket: '#8b5cf6', card_estimate: '#06b6d4', credit_card: '#6366f1' };
+    function renderCardPM(data) {
+        if (!data) return;
+        const methods = data.methods || [];
+        document.getElementById('cardPM-metric').textContent = data.total > 0 ? `Total: ${fmt(data.total)}` : 'No payment data';
+        document.getElementById('cardPM-insight').textContent = methods[0] ? `Top: ${PM_LABELS2[methods[0].method] || methods[0].method} (${methods[0].pct}%)` : '';
+        if (!methods.length) return;
+        charts['chartPM'] = new Chart(document.getElementById('chartPM'), {
+            type: 'doughnut',
+            data: {
+                labels: methods.map(m => PM_LABELS2[m.method] || m.method),
+                datasets: [{ data: methods.map(m => m.amount), backgroundColor: methods.map(m => PM_COLORS2[m.method] || '#9ca3af'), borderWidth: 0 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '65%',
+                plugins: {
+                    legend: { position: 'right', labels: { font: { size: 10 }, boxWidth: 10, padding: 6 } },
+                    tooltip: { callbacks: { label: ctx => (PM_LABELS2[methods[ctx.dataIndex].method] || methods[ctx.dataIndex].method) + ': ' + fmt(ctx.raw) + ' (' + methods[ctx.dataIndex].pct + '%)' } }
+                }
+            }
+        });
+    }
+
+    // Budget Burn-Down Line Chart
+    function renderCardBB(data) {
+        if (!data) return;
+        if (!data.has_budget) {
+            document.getElementById('cardBB-metric').textContent = 'No budgets set';
+            document.getElementById('cardBB-insight').textContent = 'Set category budgets to track burn-down';
+            return;
+        }
+        const spent = data.total_spent || 0;
+        const budget = data.total_budget || 0;
+        const pct = budget > 0 ? (spent / budget * 100).toFixed(1) : 0;
+        document.getElementById('cardBB-metric').textContent = `${fmt(spent)} of ${fmt(budget)} (${pct}%)`;
+        const proj = data.projected_end || 0;
+        document.getElementById('cardBB-insight').textContent = `Projected end-of-month: ${fmt(proj)}${proj > budget ? ' ⚠ Over budget' : ''}`;
+        const days = (data.days || []).filter(d => !d.is_future);
+        const allDays = data.days || [];
+        charts['chartBB'] = new Chart(document.getElementById('chartBB'), {
+            type: 'line',
+            data: {
+                labels: allDays.map(d => d.day),
+                datasets: [
+                    {
+                        label: 'Actual Spend',
+                        data: allDays.map(d => d.is_future ? null : d.cumulative),
+                        borderColor: proj > budget ? '#ef4444' : '#6366f1',
+                        backgroundColor: proj > budget ? 'rgba(239,68,68,0.08)' : 'rgba(99,102,241,0.08)',
+                        fill: true, tension: 0.2, pointRadius: 0, spanGaps: false,
+                    },
+                    {
+                        label: 'Budget Pace',
+                        data: allDays.map(d => d.pace),
+                        borderColor: '#10b981',
+                        borderDash: [6, 4],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top', labels: { font: { size: 10 }, boxWidth: 10 } },
+                    tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt(ctx.raw) } }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 9 }, maxTicksLimit: 10 } },
+                    y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 }, callback: v => fmtShort(v) } }
+                }
+            }
+        });
+    }
 
     function renderDoughnut(canvas, data) {
         const cats = (data.categories || []).slice(0, 8);

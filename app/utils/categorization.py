@@ -213,24 +213,49 @@ def extract_merchant_info(description: str) -> Dict[str, Optional[str]]:
     return result
 
 
-def is_recurring_transaction(description: str) -> bool:
+def is_recurring_transaction(description: str, category: str = "") -> bool:
     """
     Detect if a transaction is likely recurring (subscription).
 
+    Uses both keyword matching and category analysis for better accuracy.
+
     Args:
         description: Transaction description
+        category: Optional category string for additional signal
 
     Returns:
         True if likely recurring, False otherwise
     """
+    # Strong subscription keywords
     recurring_keywords = [
         "subscription", "monthly", "annual", "recurring", "auto pay",
         "autopay", "netflix", "amazon prime", "spotify", "gym",
-        "insurance", "premium", "emi"
+        "insurance", "premium", "emi", "membership", "renewal",
+        "license", "plan", "monthly fee", "youtube premium",
+        "apple music", "disney+", "icloud", "google one",
+        "microsoft 365", "office 365", "adobe", "github",
+        "canva", "figma", "notion", "dropbox", "1password",
+        "cursor.ai", "claude.ai", "anthropic",
     ]
 
+    # Subscription-indicating categories
+    subscription_categories = {
+        "entertainment", "software & tools", "subscriptions & memberships",
+        "streaming", "subscription", "insurance",
+    }
+
     description_lower = description.lower()
-    return any(keyword in description_lower for keyword in recurring_keywords)
+
+    # Check keywords in description
+    keyword_match = any(keyword in description_lower for keyword in recurring_keywords)
+
+    # Check category
+    category_match = False
+    if category:
+        cat_lower = category.lower()
+        category_match = any(sc in cat_lower for sc in subscription_categories)
+
+    return keyword_match or category_match
 
 
 def calculate_category_summary(transactions: List[Dict]) -> Dict[str, Dict]:

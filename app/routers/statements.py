@@ -46,8 +46,15 @@ class TransactionDetail(BaseModel):
     description_raw: str
     merchant_name: Optional[str]
     merchant_category: Optional[str]
+    category_ai: Optional[str] = None
+    category_manual: Optional[str] = None
+    category_source: Optional[str] = None
     amount: Decimal
     transaction_type: str
+    debit_credit: Optional[str] = None
+    account_id: Optional[int] = None
+    account_number: Optional[str] = None
+    card_last_four: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -419,10 +426,12 @@ async def reset_database(
             detail="Confirmation failed. Must provide confirm='RESET' to reset database"
         )
 
-    from sqlalchemy import delete
+    from sqlalchemy import delete, text
     from app.models import (
         Statement, Transaction, Fee, InterestCharge,
-        CategorySummary, RewardsSummary, Payment
+        CategorySummary, RewardsSummary, Payment,
+        AiExtraction, CategoryRule, Insight, AdvisorReport,
+        Budget, Account, FinancialInstitution,
     )
     from app.config import settings
     import shutil
@@ -439,19 +448,30 @@ async def reset_database(
         except Exception as e:
             print(f"Warning: Error cleaning upload directory: {e}")
 
-    # Delete all database records (in correct order due to foreign keys)
+    # Delete all database records (child → parent order for FK safety)
     await db.execute(delete(Payment))
     await db.execute(delete(CategorySummary))
     await db.execute(delete(RewardsSummary))
     await db.execute(delete(InterestCharge))
     await db.execute(delete(Fee))
     await db.execute(delete(Transaction))
+    await db.execute(delete(AiExtraction))
+    await db.execute(delete(Insight))
+    await db.execute(delete(AdvisorReport))
+    await db.execute(delete(Budget))
+    await db.execute(delete(CategoryRule))
     await db.execute(delete(Statement))
+    await db.execute(delete(Account))
+    await db.execute(delete(FinancialInstitution))
+    await db.commit()
+
+    # Re-seed default institutions
+    await db.execute(text("DELETE FROM sqlite_sequence"))
     await db.commit()
 
     return {
         "success": True,
-        "message": "Database reset successfully. All data has been deleted.",
+        "message": "Full reset complete. All data, files, and AI cache deleted.",
         "warning": "This action cannot be undone."
     }
 

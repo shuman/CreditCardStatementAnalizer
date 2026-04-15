@@ -11,6 +11,7 @@ from app.config import settings
 from app.database import init_db
 from app.routers import upload, statements, ml
 from app.routers import accounts, categories, advisor, budgets, reports
+from app.routers import daily_expenses, daily_income
 
 
 @asynccontextmanager
@@ -67,21 +68,23 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI app
 app = FastAPI(
-    title="Personal Finance Intelligence",
+    title=settings.app_name,
     description=(
         "AI-powered personal finance platform: "
         "parse multi-bank statements, track spending across cards, "
         "and get personalized financial insights."
     ),
-    version="2.0.0",
+    version=settings.app_version,
     lifespan=lifespan
 )
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Setup templates
+# Setup templates (globals available on every page)
 templates = Jinja2Templates(directory="templates")
+templates.env.globals["app_name"] = settings.app_name
+templates.env.globals["app_version"] = settings.app_version
 
 # ---------------------------------------------------------------------------
 # API routers
@@ -94,6 +97,8 @@ app.include_router(categories.router)
 app.include_router(advisor.router)
 app.include_router(budgets.router)
 app.include_router(reports.router)
+app.include_router(daily_expenses.router)
+app.include_router(daily_income.router)
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +128,11 @@ async def reports_page(request: Request):
     return templates.TemplateResponse(request, "reports.html", {"title": "Reports"})
 
 
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request):
+    return templates.TemplateResponse(request, "dashboard.html", {"title": "Dashboard"})
+
+
 @app.get("/preview", response_class=HTMLResponse)
 async def preview_page(request: Request):
     return templates.TemplateResponse(request, "preview.html", {"title": "Preview Statement"})
@@ -143,12 +153,22 @@ async def advisor_page(request: Request):
     return templates.TemplateResponse(request, "advisor.html", {"title": "AI Advisor"})
 
 
+@app.get("/daily-expenses", response_class=HTMLResponse)
+async def daily_expenses_page(request: Request):
+    return templates.TemplateResponse(request, "daily_expenses.html", {"title": "Daily Expenses"})
+
+
+@app.get("/daily-income", response_class=HTMLResponse)
+async def daily_income_page(request: Request):
+    return templates.TemplateResponse(request, "daily_income.html", {"title": "Income Tracker"})
+
+
 @app.get("/health")
 async def health_check():
     return {
         "status": "healthy",
-        "app": "Personal Finance Intelligence",
-        "version": "2.0.0",
+        "app": settings.app_name,
+        "version": settings.app_version,
         "claude_vision": bool(settings.anthropic_api_key),
     }
 

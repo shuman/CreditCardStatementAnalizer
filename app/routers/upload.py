@@ -2,9 +2,10 @@
 Upload router - handles PDF file uploads.
 """
 import os
+import re
 import hashlib
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Body
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +19,67 @@ from app.parsers import ParserFactory, AmexParser
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["upload"])
+
+
+# ---------------------------------------------------------------------------
+# Server-side PDF validation (runs BEFORE any Claude API call)
+# ---------------------------------------------------------------------------
+_FINANCIAL_KEYWORDS = [
+    "statement", "balance", "credit", "debit", "transaction",
+    "payment", "card", "bank", "due", "period", "amount", "account",
+]
+_MIN_KEYWORD_MATCHES = 2
+
+
+def _validate_pdf(pdf_path: str) -> Tuple[bool, str, int, bool]:
+    """
+    Validate that *pdf_path* is a readable, non-encrypted PDF that looks
+    like a financial statement.
+
+    Returns (valid, reason, pages, has_text).
+    """
+    import pdfplumber
+
+    try:
+        pdf = pdfplumber.open(pdf_path)
+    except Exception:
+        return False, "The file is not a valid PDF. It may be corrupted.", 0, False
+
+    pages = len(pdf.pages)
+    if pages == 0:
+        pdf.close()
+        return False, "The PDF contains no pages.", 0, False
+
+    # Extract text from first page (and second if available) to check content
+    sample_text = ""
+    for i in range(min(2, pages)):
+        page_text = pdf.pages[i].extract_text() or ""
+        sample_text += " " + page_text
+
+    pdf.close()
+
+    has_text = bool(sample_text.strip())
+    if not has_text:
+        return (
+            False,
+            "The PDF contains no readable text. It may be a scanned image or corrupted file.",
+            pages,
+            False,
+        )
+
+    # Check for financial-statement keywords (case-insensitive)
+    text_lower = sample_text.lower()
+    matches = sum(1 for kw in _FINANCIAL_KEYWORDS if re.search(rf"\b{kw}\b", text_lower))
+    if matches < _MIN_KEYWORD_MATCHES:
+        return (
+            False,
+            "This PDF doesn't appear to be a financial statement. "
+            "Expected keywords like 'balance', 'transaction', 'payment' were not found.",
+            pages,
+            True,
+        )
+
+    return True, "", pages, True
 
 
 def _serialize(obj: Any) -> Any:
@@ -80,6 +142,13 @@ async def preview_statement(
                 working_file = parser.decrypt_pdf(temp_path, password)
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Failed to decrypt PDF: {e}")
+
+        # ------------------------------------------------------------------
+        # Validate PDF before any AI processing
+        # ------------------------------------------------------------------
+        valid, reason, pdf_pages, pdf_has_text = _validate_pdf(working_file)
+        if not valid:
+            raise HTTPException(status_code=400, detail=reason)
 
         # ------------------------------------------------------------------
         # Extraction: Claude Vision → regex fallback
@@ -145,33 +214,18 @@ async def preview_statement(
             extraction_method = "regex_fallback"
 
         # ------------------------------------------------------------------
-        # Categorise every transaction (rules → Claude Haiku → keyword fallback)
+        # Categorise every transaction (batch: rules first, then 1 Claude call)
         # ------------------------------------------------------------------
         from app.services.category_engine import CategoryEngine
+
         engine = CategoryEngine(db)
 
-        for txn in parsed_data.get("transactions", []):
-            # Skip if already has a user-set category (from account rules)
-            if txn.get("category_source") == "user_override":
-                continue
+        txn_list = parsed_data.get("transactions", [])
+        total_transactions = len(txn_list)
 
-            merchant = txn.get("merchant_name") or txn.get("description_raw", "")
-            country = txn.get("merchant_country") or "BD"
-            try:
-                cat, subcat, source, confidence = await engine.categorize(
-                    merchant, txn.get("description_raw", ""), country
-                )
-            except Exception as ce:
-                logger.warning(f"CategoryEngine failed for '{merchant}': {ce}")
-                cat, subcat, source, confidence = "Other", None, "fallback", 0.5
-
-            txn["category_ai"] = cat
-            txn["subcategory_ai"] = subcat
-            txn["category_source"] = source
-            txn["category_confidence"] = round(confidence, 2)
-            # Keep merchant_category in sync (used by preview page dropdowns & save path)
-            if not txn.get("merchant_category"):
-                txn["merchant_category"] = cat
+        logger.info(f"Starting batch categorization for {total_transactions} transactions")
+        await engine.batch_categorize(txn_list)
+        logger.info(f"Batch categorization complete for {total_transactions} transactions")
 
         # ------------------------------------------------------------------
         # Serialize for JSON response

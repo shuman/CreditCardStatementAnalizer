@@ -610,17 +610,24 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
         try:
             response = client.messages.create(
                 model="claude-sonnet-4-5",
-                max_tokens=2048,
+                max_tokens=4096,
                 system=ADVISOR_SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}],
             )
             raw_text = response.content[0].text
             tokens_in = response.usage.input_tokens
             tokens_out = response.usage.output_tokens
+            stop_reason = response.stop_reason
             cost = (tokens_in * COST_PER_M_INPUT + tokens_out * COST_PER_M_OUTPUT) / 1_000_000
             logger.info(
-                f"Advisor report generated: {tokens_in}+{tokens_out} tokens, ${cost:.4f}"
+                f"Advisor report generated: {tokens_in}+{tokens_out} tokens, "
+                f"stop_reason={stop_reason}, ${cost:.4f}"
             )
+            if stop_reason == "max_tokens":
+                logger.error(
+                    "Claude stopped due to max_tokens — response was truncated. "
+                    "Increase max_tokens further."
+                )
         except Exception as e:
             logger.error(f"Claude advisor report failed: {e}")
             return None
@@ -631,7 +638,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
             logger.error("Failed to parse Claude JSON response for advisor report")
             return None
 
-        # Compute total score from breakdown
+        # Compute total score from breakdown (5 dimensions × 20 max = 100)
         breakdown = parsed.get("score_breakdown", {})
         total_score = sum(breakdown.values()) if breakdown else 0
         score_delta = total_score - prev_score if prev_score is not None else None
@@ -655,6 +662,11 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
             top_recommendation=parsed.get("top_recommendation"),
             projection=parsed.get("projection"),
             advisor_notes=parsed.get("advisor_notes"),
+            # New holistic income & savings fields
+            income_insights=parsed.get("income_insights"),
+            income_tips=parsed.get("income_tips"),
+            savings_analysis=parsed.get("savings_analysis"),
+            motivation=parsed.get("motivation"),
             signals=signals,
             raw_ai_output=raw_text,
             ai_model="claude-sonnet-4-5",
@@ -710,12 +722,14 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
             return json.loads(text)
         except json.JSONDecodeError as e:
             logger.error(f"JSON parse error: {e}")
+            logger.error(f"Raw Claude output (first 500 chars): {raw_text[:500]!r}")
+            logger.error(f"Raw Claude output (last 500 chars): {raw_text[-500:]!r}")
             # Try to find JSON object in text
             start = text.find("{")
             end = text.rfind("}") + 1
             if start >= 0 and end > start:
                 try:
                     return json.loads(text[start:end])
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as e2:
+                    logger.error(f"Fallback JSON parse also failed: {e2}")
             return None

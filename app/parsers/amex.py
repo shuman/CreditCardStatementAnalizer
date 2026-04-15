@@ -440,6 +440,14 @@ class AmexParser(BaseParser):
 
         # Check if recurring
         transaction["is_recurring"] = is_recurring_transaction(transaction["description_raw"])
+        if transaction["is_recurring"]:
+            desc_lower = transaction["description_raw"].lower()
+            if "annual" in desc_lower or "yearly" in desc_lower:
+                transaction["recurring_frequency"] = "annual"
+            elif "quarter" in desc_lower:
+                transaction["recurring_frequency"] = "quarterly"
+            else:
+                transaction["recurring_frequency"] = "monthly"
 
         # Check if international
         transaction["is_international"] = merchant_info["country"] != "IN"
@@ -585,7 +593,12 @@ class AmexParser(BaseParser):
                     "tags": None,
                     "notes": None,
                     "is_recurring": is_recurring_transaction(description),
-                    "recurring_frequency": None,
+                    "recurring_frequency": (
+                        "annual" if "annual" in description.lower() or "yearly" in description.lower()
+                        else "quarterly" if "quarter" in description.lower()
+                        else "monthly" if is_recurring_transaction(description)
+                        else None
+                    ),
                     "receipt_url": None,
                     "is_business": False,
                     "tax_deductible": False,

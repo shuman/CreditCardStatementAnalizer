@@ -198,16 +198,25 @@ async def get_advisor_report(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Get or auto-generate the AI advisor report for a specific month.
-    Returns cached report if available, otherwise generates a new one.
+    Return a cached advisor report for the given month.
+    Returns 404 if no report has been generated yet — does NOT auto-generate.
+    Use POST /generate/{year}/{month} to trigger generation.
     """
-    advisor = AdvisorService(db)
-    report = await advisor.generate_advisor_report(year, month, account_id)
+    query = select(AdvisorReport).where(
+        AdvisorReport.year == year,
+        AdvisorReport.month == month,
+    )
+    if account_id:
+        query = query.where(AdvisorReport.account_id == account_id)
+    else:
+        query = query.where(AdvisorReport.account_id.is_(None))
+    result = await db.execute(query)
+    report = result.scalar_one_or_none()
 
     if not report:
         raise HTTPException(
             status_code=404,
-            detail="No transaction data found for this period. Upload a statement first."
+            detail="No report generated for this period yet."
         )
 
     return _serialize_report(report)
@@ -258,7 +267,31 @@ async def force_generate_report(
     account_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Force-regenerate an advisor report (deletes cache first)."""
+    """Generate (or re-generate) an advisor report for the given month."""
+    from app.config import settings
+    from app.services.signal_engine import SignalEngine
+
+    # Check API key first so we give a clear error before doing any DB work
+    if not settings.anthropic_api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="Anthropic API key is not configured. Add ANTHROPIC_API_KEY to your .env file and restart the server."
+        )
+
+    # Check that transaction data exists for the period
+    month_names = ["January","February","March","April","May","June",
+                   "July","August","September","October","November","December"]
+    sig_engine = SignalEngine(db)
+    signals = await sig_engine.compute_all_signals(year, month, account_id)
+    if not signals.get("has_data"):
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"No credit card transaction data found for {month_names[month-1]} {year}. "
+                f"Upload a statement for this month first, or switch to a month that has data."
+            )
+        )
+
     advisor = AdvisorService(db)
     report = await advisor.generate_advisor_report(
         year, month, account_id, force_regenerate=True
@@ -266,8 +299,8 @@ async def force_generate_report(
 
     if not report:
         raise HTTPException(
-            status_code=404,
-            detail="No transaction data found for this period."
+            status_code=500,
+            detail="Report generation failed. The AI returned an unexpected response. Check server logs for details."
         )
 
     return _serialize_report(report)
@@ -294,6 +327,11 @@ def _serialize_report(report: AdvisorReport) -> dict:
         "top_recommendation": report.top_recommendation,
         "projection": report.projection,
         "advisor_notes": report.advisor_notes,
+        # Holistic income & savings fields
+        "income_insights": report.income_insights,
+        "income_tips": report.income_tips,
+        "savings_analysis": report.savings_analysis,
+        "motivation": report.motivation,
         "ai_cost_usd": float(report.ai_cost_usd) if report.ai_cost_usd else None,
         "created_at": report.created_at.isoformat() if report.created_at else None,
     }

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
 
     # Application
     app_name: str = "Personal Finance Intelligence"
+    app_version: str = "2.0.0"
     debug: bool = True
 
     # Database

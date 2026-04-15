@@ -41,6 +41,8 @@ def upgrade() -> None:
         batch_op.add_column(
             sa.Column("statement_type", sa.String(20), nullable=False, server_default="credit")
         )
+
+    with op.batch_alter_table("statements") as batch_op:
         batch_op.create_foreign_key(
             "fk_statements_account_id",
             "accounts",
@@ -65,6 +67,8 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column("category_confidence", sa.Numeric(3, 2), nullable=True))
         batch_op.add_column(sa.Column("category_source", sa.String(20), nullable=True))
         batch_op.add_column(sa.Column("category_rule_id", sa.Integer(), nullable=True))
+
+    with op.batch_alter_table("transactions") as batch_op:
         batch_op.create_foreign_key(
             "fk_transactions_account_id",
             "accounts",

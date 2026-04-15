@@ -3,11 +3,11 @@ SQLAlchemy models for all database tables.
 Comprehensive schema for storing financial statement data across
 multiple banks, card types, and account types.
 """
-from datetime import datetime, date
+from datetime import datetime, date, time
 from decimal import Decimal
 from typing import List, Optional
 from sqlalchemy import (
-    Column, String, Integer, Date, DateTime, Numeric, Boolean, Text,
+    Column, String, Integer, Date, DateTime, Time, Numeric, Boolean, Text,
     ForeignKey, Index, UniqueConstraint, CheckConstraint, func
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -356,6 +356,15 @@ class AdvisorReport(Base):
 
     # Section 10: Advisor Notes
     advisor_notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Income & Savings sections (holistic financial advice)
+    income_insights: Mapped[Optional[dict]] = mapped_column(JSON)
+    # e.g. [{"title": "...", "icon": "fa-coins", "text": "..."}]
+    income_tips: Mapped[Optional[dict]] = mapped_column(JSON)
+    # e.g. [{"title": "...", "detail": "...", "potential_bdt": 5000}]
+    savings_analysis: Mapped[Optional[dict]] = mapped_column(JSON)
+    # e.g. {"true_savings_rate_pct": 12.5, "target_savings_rate_pct": 20, "monthly_gap_bdt": 3000, "assessment": "..."}
+    motivation: Mapped[Optional[str]] = mapped_column(Text)
 
     # Raw data
     signals: Mapped[Optional[dict]] = mapped_column(JSON)
@@ -827,3 +836,93 @@ class Payment(Base):
 
     def __repr__(self):
         return f"<Payment(id={self.id}, date={self.payment_date}, amount={self.payment_amount})>"
+
+
+# ---------------------------------------------------------------------------
+# NEW: Daily Expense (manual logging with batch AI categorization)
+# ---------------------------------------------------------------------------
+
+class DailyExpense(Base):
+    """
+    User-entered daily cash expenses for quick manual logging.
+    Supports batch AI categorization workflow: draft → pending → processed.
+    Separate from statement-imported transactions (different data source).
+    """
+    __tablename__ = "daily_expenses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # Amount
+    amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), default="BDT")
+
+    # Description
+    description_raw: Mapped[str] = mapped_column(String(500), nullable=False)
+    description_normalized: Mapped[Optional[str]] = mapped_column(String(500))
+
+    # AI-enhanced categorization
+    category: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    subcategory: Mapped[Optional[str]] = mapped_column(String(100))
+    tags: Mapped[Optional[dict]] = mapped_column(JSON)
+
+    # Payment method
+    payment_method: Mapped[str] = mapped_column(String(20), default="cash", index=True)
+    # cash | bkash | nagad | rocket | card_estimate
+
+    # Transaction timing
+    transaction_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    transaction_time: Mapped[Optional[time]] = mapped_column(Time)
+
+    # AI workflow status
+    ai_status: Mapped[str] = mapped_column(String(20), default="draft", index=True)
+    # draft | pending | processed
+    confidence_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(3, 2))
+    needs_review: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
+    enriched_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    def __repr__(self):
+        return f"<DailyExpense(id={self.id}, amount={self.amount}, desc={self.description_raw[:30]}, status={self.ai_status})>"
+
+
+# ---------------------------------------------------------------------------
+# NEW: Daily Income (manual logging)
+# ---------------------------------------------------------------------------
+
+class DailyIncome(Base):
+    """
+    User-entered daily income transactions for tracking cash inflows.
+    Simpler workflow than expenses (fewer categories, minimal AI processing).
+    """
+    __tablename__ = "daily_income"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    # Amount
+    amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), default="BDT")
+
+    # Description
+    description_raw: Mapped[str] = mapped_column(String(500), nullable=False)
+    description_normalized: Mapped[Optional[str]] = mapped_column(String(500))
+
+    # Income source type
+    source_type: Mapped[Optional[str]] = mapped_column(String(50), index=True)
+    # freelance | salary | business | gift | investment | side_income | other
+    tags: Mapped[Optional[dict]] = mapped_column(JSON)
+
+    # Transaction date
+    transaction_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+
+    # AI workflow status (optional for income)
+    ai_status: Mapped[str] = mapped_column(String(20), default="draft", index=True)
+    # draft | processed
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
+    enriched_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    def __repr__(self):
+        return f"<DailyIncome(id={self.id}, amount={self.amount}, source={self.source_type}, date={self.transaction_date})>"

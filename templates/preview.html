@@ -86,7 +86,7 @@
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead>
-                    <tr class="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    <tr id="transactions-thead" class="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
                         <th class="pb-2 pr-3 whitespace-nowrap">Date</th>
                         <th class="pb-2 pr-3">Description / Merchant</th>
                         <th class="pb-2 pr-3">Category</th>
@@ -281,12 +281,55 @@ function renderTransactions(transactions) {
     document.getElementById('txn-count-label').textContent = `(${transactions.length} transactions)`;
     const tbody = document.getElementById('transactions-table');
 
+    // Build card sections map from preview data
+    const cardSections = (previewData.card_sections_meta || []);
+    const hasMultipleCards = cardSections.length > 1;
+
+    // Track current card for section headers
+    let currentCardNumber = null;
+
     transactions.forEach((txn, idx) => {
+        // Insert card section header when card changes (multi-card statements)
+        const txnCard = txn.account_number || txn.card_last_four || '';
+        if (hasMultipleCards && txnCard && txnCard !== currentCardNumber) {
+            currentCardNumber = txnCard;
+            const section = cardSections.find(s =>
+                s.card_number_masked === txnCard ||
+                (txn.card_last_four && s.card_number_masked && s.card_number_masked.endsWith(txn.card_last_four))
+            );
+            const name = section?.cardholder_name || '';
+            const isPrimary = section?.card_number_masked === cardSections[0]?.card_number_masked;
+            const tier = isPrimary ? 'Primary' : 'Supplement';
+            const sectionTxns = transactions.filter(t =>
+                (t.account_number || t.card_last_four || '') === txnCard
+            ).length;
+
+            const headerRow = document.createElement('tr');
+            headerRow.className = isPrimary
+                ? 'bg-blue-50 border-t-2 border-blue-200'
+                : 'bg-orange-50 border-t-2 border-orange-200';
+            headerRow.innerHTML = `
+                <td colspan="6" class="py-2.5 px-3">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full ${isPrimary ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}">
+                            <i class="fas fa-credit-card text-xs"></i>
+                        </span>
+                        <span class="font-semibold text-sm ${isPrimary ? 'text-blue-800' : 'text-orange-800'}">
+                            ${escHtml(currentCardNumber)}
+                        </span>
+                        ${name ? `<span class="text-sm ${isPrimary ? 'text-blue-600' : 'text-orange-600'}"> — ${escHtml(name)}</span>` : ''}
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium ${isPrimary ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}">${tier}</span>
+                        <span class="text-xs ${isPrimary ? 'text-blue-400' : 'text-orange-400'} ml-auto">${sectionTxns} transaction${sectionTxns !== 1 ? 's' : ''}</span>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(headerRow);
+        }
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-gray-50/50 group';
 
         const source    = txn.category_source || 'fallback';
-        const cat       = txn.category_ai || txn.merchant_category || 'Other';
+        const cat       = (source === 'user_override' && txn.category_manual) ? txn.category_manual : (txn.category_ai || txn.merchant_category || 'Other');
         const subcat    = txn.subcategory_ai || '';
         const conf      = txn.category_confidence || 0;
         const confPct   = Math.round(conf * 100);
@@ -400,13 +443,15 @@ function collectEditedData() {
 
     const transactions = (previewData.transactions || []).map((txn, idx) => {
         const cat = document.getElementById(`txn_${idx}_category`)?.value;
+        const isOverride = txn.category_source === 'user_override';
         return {
             ...txn,
             transaction_date: document.getElementById(`txn_${idx}_date`)?.value,
             merchant_name:    document.getElementById(`txn_${idx}_merchant`)?.value,
             description_raw:  document.getElementById(`txn_${idx}_desc`)?.value,
             merchant_category: cat,
-            category_ai:      cat,
+            category_manual:  isOverride ? cat : (txn.category_manual || null),
+            category_ai:      isOverride ? (txn.category_ai || cat) : cat,
             amount: parseFloat(document.getElementById(`txn_${idx}_amount`)?.value || 0),
             billing_amount: parseFloat(document.getElementById(`txn_${idx}_amount`)?.value || 0),
         };

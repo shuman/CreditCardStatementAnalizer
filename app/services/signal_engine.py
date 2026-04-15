@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Transaction, Budget
+from app.models import Transaction, Budget, DailyIncome, DailyExpense
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +57,9 @@ class SignalEngine:
         # Category distribution
         cat_dist = self._category_distribution(txns, total_spend)
 
-        # Credit transactions for savings ratio
+        # Credit card credit transactions (bill payments / refunds — NOT income)
         credits = await self._get_credit_transactions(period_from, period_to, account_id)
-        total_credits = sum(float(t.billing_amount or t.amount or 0) for t in credits)
+        total_bill_payments = sum(float(t.billing_amount or t.amount or 0) for t in credits)
 
         # Previous month for trend calculations
         prev_date = period_from - timedelta(days=1)
@@ -76,11 +76,31 @@ class SignalEngine:
             period_from, period_to, account_id, cat_dist
         )
 
+        # Real income from user-entered DailyIncome records
+        income_signals = await self._compute_income_signals(period_from, period_to, year, month)
+
+        # Cash expenses from user-entered DailyExpense records
+        cash_signals = await self._compute_cash_expense_signals(period_from, period_to)
+
+        # Holistic computed signals (income vs total outflow)
+        income_total = income_signals.get("income_total_bdt", 0)
+        cash_total = cash_signals.get("cash_expense_total_bdt", 0)
+        total_outflow = round(total_spend + cash_total, 2)
+        true_savings_rate = (
+            round((income_total - total_outflow) / income_total * 100, 1)
+            if income_total > 0 else None
+        )
+        income_expense_ratio = (
+            round(income_total / total_outflow, 2) if total_outflow > 0 else None
+        )
+
         signals = {
             "has_data": True,
             "total_transactions": len(txns),
             "total_spend_bdt": round(total_spend, 2),
-            "total_credits_bdt": round(total_credits, 2),
+            # NOTE: bill_payments_bdt are credit card bill payments made to the bank —
+            # these are NOT income. They simply reduce the card outstanding balance.
+            "bill_payments_bdt": round(total_bill_payments, 2),
             "prev_spend_bdt": round(prev_spend, 2),
             "spend_change_pct": round(
                 ((total_spend - prev_spend) / prev_spend * 100) if prev_spend > 0 else 0, 1
@@ -90,9 +110,6 @@ class SignalEngine:
             "merchant_dependency": self._compute_merchant_dependency(txns, total_spend),
             "time_based_spending": self._compute_time_based_spending(txns),
             "lifestyle_creep_rate": self._compute_lifestyle_creep(monthly_totals),
-            "savings_ratio": round(
-                total_credits / total_spend if total_spend > 0 else 0, 2
-            ),
             "convenience_cost": self._compute_convenience_cost(txns, total_spend),
             "category_breakdown": cat_dist,
             "budget_adherence": budget_adherence,
@@ -102,6 +119,14 @@ class SignalEngine:
                 sum(float(t.billing_amount or t.amount or 0) for t in txns if t.is_recurring)
                 / total_spend * 100 if total_spend > 0 else 0, 1
             ),
+            # Income signals (from DailyIncome user entries — real income)
+            **income_signals,
+            # Cash expense signals (from DailyExpense user entries)
+            **cash_signals,
+            # Holistic financial picture
+            "total_outflow_bdt": total_outflow,
+            "true_savings_rate_pct": true_savings_rate,
+            "income_expense_ratio": income_expense_ratio,
             "period": {"year": year, "month": month, "from": str(period_from), "to": str(period_to)},
         }
 
@@ -350,4 +375,149 @@ class SignalEngine:
             "breached": breached,
             "breach_pct": round(breached / len(budgets) * 100, 1),
             "details": statuses,
+        }
+
+    # ------------------------------------------------------------------
+    # Income signals (DailyIncome — user-entered real income)
+    # ------------------------------------------------------------------
+
+    async def _compute_income_signals(
+        self, period_from: date, period_to: date, year: int, month: int,
+    ) -> Dict[str, Any]:
+        """Compute income signals from user-entered DailyIncome records."""
+        query = select(DailyIncome).where(
+            DailyIncome.transaction_date.between(period_from, period_to),
+        )
+        result = await self.db.execute(query)
+        entries = result.scalars().all()
+
+        if not entries:
+            return {
+                "income_total_bdt": 0,
+                "income_has_data": False,
+                "income_source_breakdown": {},
+                "income_source_count": 0,
+                "income_trend_6m": await self._income_monthly_totals(6, year, month),
+                "income_change_pct": 0,
+                "income_diversification_score": 0,
+            }
+
+        income_total = sum(float(e.amount or 0) for e in entries)
+
+        # Breakdown by source type
+        by_source: Dict[str, float] = {}
+        for e in entries:
+            src = e.source_type or "other"
+            by_source[src] = by_source.get(src, 0) + float(e.amount or 0)
+
+        # 6-month income trend
+        income_trend = await self._income_monthly_totals(6, year, month)
+
+        # MoM income change
+        prev_total = income_trend[-2]["total"] if len(income_trend) >= 2 else 0
+        income_change_pct = (
+            round((income_total - prev_total) / prev_total * 100, 1)
+            if prev_total > 0 else 0
+        )
+
+        # Diversification score: reward having multiple income sources
+        source_count = len(by_source)
+        if source_count >= 4:
+            div_score = 100
+        elif source_count == 3:
+            div_score = 75
+        elif source_count == 2:
+            div_score = 50
+        else:
+            div_score = 25
+
+        # Also consider balance — heavily concentrated is less diversified
+        if income_total > 0 and source_count > 1:
+            max_share = max(by_source.values()) / income_total
+            if max_share > 0.90:
+                div_score = max(div_score - 20, 10)
+
+        return {
+            "income_total_bdt": round(income_total, 2),
+            "income_has_data": True,
+            "income_source_breakdown": {k: round(v, 2) for k, v in
+                                        sorted(by_source.items(), key=lambda x: x[1], reverse=True)},
+            "income_source_count": source_count,
+            "income_trend_6m": income_trend,
+            "income_change_pct": income_change_pct,
+            "income_diversification_score": div_score,
+        }
+
+    async def _income_monthly_totals(
+        self, months_back: int, end_year: int, end_month: int,
+    ) -> List[Dict[str, Any]]:
+        """6-month income totals for trend analysis."""
+        results = []
+        for i in range(months_back - 1, -1, -1):
+            m = end_month - i
+            y = end_year
+            while m <= 0:
+                m += 12
+                y -= 1
+            last_day = calendar.monthrange(y, m)[1]
+            pf = date(y, m, 1)
+            pt = date(y, m, last_day)
+            res = await self.db.execute(
+                select(func.coalesce(func.sum(DailyIncome.amount), 0)).where(
+                    DailyIncome.transaction_date.between(pf, pt),
+                )
+            )
+            total = float(res.scalar() or 0)
+            results.append({"month": f"{y}-{m:02d}", "total": round(total, 2)})
+        return results
+
+    # ------------------------------------------------------------------
+    # Cash expense signals (DailyExpense — user-entered cash transactions)
+    # ------------------------------------------------------------------
+
+    async def _compute_cash_expense_signals(
+        self, period_from: date, period_to: date
+    ) -> Dict[str, Any]:
+        """Compute signals from user-entered DailyExpense (cash/mobile banking) records."""
+        query = select(DailyExpense).where(
+            DailyExpense.transaction_date.between(period_from, period_to),
+            DailyExpense.ai_status == "processed",
+        )
+        result = await self.db.execute(query)
+        expenses = result.scalars().all()
+
+        if not expenses:
+            return {
+                "cash_expense_total_bdt": 0,
+                "cash_expense_has_data": False,
+                "cash_expense_categories": [],
+                "cash_payment_methods": {},
+            }
+
+        cash_total = sum(float(e.amount or 0) for e in expenses)
+
+        # Category breakdown
+        by_cat: Dict[str, float] = {}
+        for e in expenses:
+            cat = e.category or "Other"
+            by_cat[cat] = by_cat.get(cat, 0) + float(e.amount or 0)
+
+        categories = [
+            {"category": cat, "amount": round(amt, 2),
+             "pct": round(amt / cash_total * 100, 1) if cash_total > 0 else 0}
+            for cat, amt in sorted(by_cat.items(), key=lambda x: x[1], reverse=True)
+        ]
+
+        # Payment method breakdown
+        by_method: Dict[str, float] = {}
+        for e in expenses:
+            pm = e.payment_method or "cash"
+            by_method[pm] = by_method.get(pm, 0) + float(e.amount or 0)
+
+        return {
+            "cash_expense_total_bdt": round(cash_total, 2),
+            "cash_expense_has_data": True,
+            "cash_expense_categories": categories[:8],  # top 8 categories
+            "cash_payment_methods": {k: round(v, 2) for k, v in
+                                     sorted(by_method.items(), key=lambda x: x[1], reverse=True)},
         }

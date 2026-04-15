@@ -84,31 +84,45 @@
         try {
             // Load statement details
             const stmtResponse = await fetch(`/api/statements/${statementId}`);
+            if (!stmtResponse.ok) {
+                throw new Error(`Statement not found (HTTP ${stmtResponse.status})`);
+            }
             const statement = await stmtResponse.json();
             displayStatement(statement);
 
             // Load analytics
             const analyticsResponse = await fetch(`/api/statements/${statementId}/analytics`);
-            const analytics = await analyticsResponse.json();
-            displayAnalytics(analytics);
+            if (analyticsResponse.ok) {
+                const analytics = await analyticsResponse.json();
+                displayAnalytics(analytics);
+            }
 
             // Load transactions
             const txnResponse = await fetch(`/api/statements/${statementId}/transactions?limit=1000`);
-            const transactions = await txnResponse.json();
-            displayTransactions(transactions);
+            if (txnResponse.ok) {
+                const transactions = await txnResponse.json();
+                displayTransactions(transactions);
+            }
 
             // Update CSV export link
             document.getElementById('exportCsvBtn').href = `/api/statements/${statementId}/export/csv`;
 
         } catch (error) {
-            console.error('Error loading data:', error);
+            document.getElementById('statementTitle').textContent = 'Statement Not Found';
+            document.getElementById('statementSubtitle').textContent = error.message;
+            document.getElementById('summaryCards').innerHTML = '';
+            document.getElementById('categoryBreakdown').innerHTML = '';
+            document.getElementById('transactionsBody').innerHTML = '';
         }
     }
 
     function displayStatement(stmt) {
-        document.getElementById('statementTitle').textContent = stmt.filename;
+        document.getElementById('statementTitle').textContent = stmt.filename || 'Statement';
+        const dateStr = stmt.statement_date
+            ? new Date(stmt.statement_date + 'T00:00:00').toLocaleDateString()
+            : 'No date';
         document.getElementById('statementSubtitle').textContent =
-            `${stmt.bank_name} • ${new Date(stmt.statement_date).toLocaleDateString()}`;
+            `${stmt.bank_name || 'Unknown'} • ${dateStr}`;
 
         const cards = [
             {
@@ -179,7 +193,47 @@
     }
 
     function displayTransactions(transactions) {
-        document.getElementById('transactionsBody').innerHTML = transactions.map(txn => `
+        // Detect if this is a multi-card statement
+        const cardNumbers = [...new Set(transactions.filter(t => t.account_number).map(t => t.account_number))];
+        const isMultiCard = cardNumbers.length > 1;
+
+        let currentCard = null;
+        let html = '';
+
+        transactions.forEach(txn => {
+            // Insert card section header when card changes (multi-card)
+            if (isMultiCard && txn.account_number && txn.account_number !== currentCard) {
+                currentCard = txn.account_number;
+                const isFirst = currentCard === cardNumbers[0];
+                const tier = isFirst ? 'Primary' : 'Supplement';
+                const last4 = txn.card_last_four || currentCard.slice(-4);
+                const cardTxns = transactions.filter(t => t.account_number === currentCard).length;
+                html += `
+                <tr class="${isFirst ? 'bg-blue-50' : 'bg-orange-50'}">
+                    <td colspan="5" class="px-6 py-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-credit-card ${isFirst ? 'text-blue-500' : 'text-orange-500'}"></i>
+                            <span class="font-semibold text-sm ${isFirst ? 'text-blue-800' : 'text-orange-800'}">
+                                •••• ${last4}
+                            </span>
+                            <span class="text-xs px-2 py-0.5 rounded-full font-medium ${isFirst ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}">${tier}</span>
+                            <span class="text-xs ${isFirst ? 'text-blue-400' : 'text-orange-400'} ml-auto">${cardTxns} transactions</span>
+                        </div>
+                    </td>
+                </tr>`;
+            }
+
+            // Priority: user_override (category_manual) > category_ai > merchant_category
+            const source = txn.category_source || '';
+            let cat = txn.merchant_category || 'Other';
+            let catClass = 'bg-gray-100 text-gray-700';
+            if (source === 'user_override' && txn.category_manual) {
+                cat = txn.category_manual;
+                catClass = 'bg-emerald-100 text-emerald-700';
+            } else if (txn.category_ai) {
+                cat = txn.category_ai;
+            }
+            html += `
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4 text-sm text-gray-500">
                     ${new Date(txn.transaction_date).toLocaleDateString()}
@@ -191,8 +245,8 @@
                     ${txn.merchant_name || '-'}
                 </td>
                 <td class="px-6 py-4 text-sm">
-                    <span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                        ${txn.merchant_category || 'Other'}
+                    <span class="px-2 py-1 rounded text-xs ${catClass}">
+                        ${cat}${source === 'user_override' ? ' <i class="fas fa-user-edit text-xs ml-1" title="User override"></i>' : ''}
                     </span>
                 </td>
                 <td class="px-6 py-4 text-sm font-medium text-right ${
@@ -200,8 +254,10 @@
                 }">
                     ${txn.debit_credit === 'D' ? '-' : '+'}৳${Number(txn.amount).toLocaleString()}
                 </td>
-            </tr>
-        `).join('');
+            </tr>`;
+        });
+
+        document.getElementById('transactionsBody').innerHTML = html;
     }
 
     async function applyFilters() {

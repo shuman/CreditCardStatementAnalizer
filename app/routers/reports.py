@@ -20,6 +20,11 @@ REPORT_METHODS = {
     "lifestyle_creep": "lifestyle_creep",
     "health_score": "financial_health_score",
     "no_spend_tracker": "no_spend_day_tracker",
+    "cash_expense_breakdown": "cash_expense_breakdown",
+    "income_summary": "income_summary",
+    "income_vs_expense": "income_vs_expense",
+    "payment_method_distribution": "payment_method_distribution",
+    "budget_burndown": "budget_burndown",
 }
 
 
@@ -38,6 +43,32 @@ async def dashboard(
 
     engine = ReportEngine(db)
     data = await engine.generate_all(year, month, account_id)
+
+    # Attach list of accounts for the filter dropdown
+    acct_result = await db.execute(
+        select(Account).where(Account.is_active == True).order_by(Account.id)
+    )
+    data["accounts"] = [
+        {
+            "id": a.id,
+            "label": a.account_nickname
+            or f"{a.account_type} {a.account_number_masked}",
+            "masked": a.account_number_masked,
+        }
+        for a in acct_result.scalars().all()
+    ]
+
+    return data
+
+
+@router.get("/yearly-dashboard")
+async def yearly_dashboard(
+    account_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return all yearly dashboard data (12-month aggregated)."""
+    engine = ReportEngine(db)
+    data = await engine.generate_yearly_dashboard(account_id)
 
     # Attach list of accounts for the filter dropdown
     acct_result = await db.execute(

@@ -14,7 +14,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Any, Optional, Tuple
 
-from sqlalchemy import select
+from sqlalchemy import select, delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -181,12 +181,23 @@ class StatementService:
         fees = data.get("fees", [])
         account_id = data.get("account_id")
 
-        existing = await self._check_duplicate_filename(filename)
-        if existing:
-            raise ValueError(f"Statement with filename '{filename}' already exists")
+        # Re-upload support: soft-delete old statement first, permanently
+        # delete only after the new data has been committed successfully.
         existing = await self._check_duplicate_hash(file_hash)
+        if not existing:
+            existing = await self._check_duplicate_filename(filename)
+
+        old_statement_id = None
         if existing:
-            raise ValueError("Identical statement file already uploaded")
+            old_statement_id = existing.id
+            logger.info(
+                f"Re-upload detected (statement id={old_statement_id}), "
+                "soft-deleting old data (unique fields renamed)…"
+            )
+            # Rename unique fields so the new statement can be inserted
+            existing.filename = f"__deleted__{existing.id}__{existing.filename}"
+            existing.pdf_hash = f"__deleted__{existing.id}__{existing.pdf_hash}"
+            await self.db.flush()
 
         temp_path = data.get("temp_path")
         if temp_path and os.path.exists(temp_path):
@@ -273,10 +284,14 @@ class StatementService:
                         txn_data[field] = None
 
         for txn_data in transactions:
-            txn_fields = {k: v for k, v in txn_data.items() if k not in ("account_number", "statement_id")}
+            # Use per-transaction account_id/account_number from card sections
+            txn_account_id = txn_data.get("account_id") or account_id
+            txn_account_number = txn_data.get("account_number") or statement.account_number
+            txn_fields = {k: v for k, v in txn_data.items() if k not in ("account_number", "statement_id", "account_id")}
             transaction = Transaction(
                 statement_id=statement.id,
-                account_number=statement.account_number,
+                account_number=txn_account_number,
+                account_id=txn_account_id,
                 **txn_fields,
             )
             self.db.add(transaction)
@@ -290,13 +305,26 @@ class StatementService:
             transactions_added = 0
             successfully_added_transactions = []
 
+            # Re-apply soft delete after rollback (rollback restored old unique fields)
+            if old_statement_id:
+                old_stmt = await self.db.execute(
+                    select(Statement).where(Statement.id == old_statement_id)
+                )
+                old_stmt_obj = old_stmt.scalar_one_or_none()
+                if old_stmt_obj:
+                    old_stmt_obj.filename = f"__deleted__{old_statement_id}__{old_stmt_obj.filename}"
+                    old_stmt_obj.pdf_hash = f"__deleted__{old_statement_id}__{old_stmt_obj.pdf_hash}"
+                    await self.db.flush()
+
             statement = Statement(
                 filename=filename,
                 pdf_hash=file_hash,
                 file_path=file_path,
                 password=password,
-                bank_name=bank_name,
+                bank_name=effective_bank_name,
+                card_type=card_type,
                 account_id=account_id,
+                extraction_method=data.get("extraction_method", "regex_fallback"),
                 **safe_meta,
             )
             self.db.add(statement)
@@ -304,10 +332,13 @@ class StatementService:
 
             for idx, txn_data in enumerate(transactions, 1):
                 try:
-                    txn_fields = {k: v for k, v in txn_data.items() if k not in ("account_number", "statement_id")}
+                    txn_account_id = txn_data.get("account_id") or account_id
+                    txn_account_number = txn_data.get("account_number") or statement.account_number
+                    txn_fields = {k: v for k, v in txn_data.items() if k not in ("account_number", "statement_id", "account_id")}
                     transaction = Transaction(
                         statement_id=statement.id,
-                        account_number=statement.account_number,
+                        account_number=txn_account_number,
+                        account_id=txn_account_id,
                         **txn_fields,
                     )
                     self.db.add(transaction)
@@ -352,6 +383,21 @@ class StatementService:
             raise ValueError(f"Error creating category summaries: {str(e)}")
 
         await self.db.commit()
+
+        # Permanently delete the old (soft-deleted) statement now that new data is committed
+        if old_statement_id:
+            try:
+                old_stmt = await self.db.execute(
+                    select(Statement).where(Statement.id == old_statement_id)
+                )
+                old_stmt_obj = old_stmt.scalar_one_or_none()
+                if old_stmt_obj:
+                    await self._delete_statement_cascade(old_stmt_obj)
+                    await self.db.commit()
+                    logger.info(f"Permanently deleted old statement id={old_statement_id}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up old statement id={old_statement_id}: {e}")
+                # Non-fatal — new data is already saved
 
         result = {
             "statement_id": statement.id,
@@ -649,6 +695,22 @@ class StatementService:
         _EXPLICIT = {"bank_name", "account_id", "extraction_method", "ai_confidence"}
         safe_meta = {k: v for k, v in metadata.items() if k not in _EXPLICIT}
 
+        # Re-upload support: soft-delete old statement first
+        existing = await self._check_duplicate_hash(file_hash)
+        if not existing:
+            existing = await self._check_duplicate_filename(filename)
+
+        old_statement_id = None
+        if existing:
+            old_statement_id = existing.id
+            logger.info(
+                f"Re-upload detected in direct path (statement id={old_statement_id}), "
+                "soft-deleting old data…"
+            )
+            existing.filename = f"__deleted__{existing.id}__{existing.filename}"
+            existing.pdf_hash = f"__deleted__{existing.id}__{existing.pdf_hash}"
+            await self.db.flush()
+
         statement = Statement(
             filename=filename,
             pdf_hash=file_hash,
@@ -674,12 +736,17 @@ class StatementService:
             if not txn_data.get("billing_currency") and txn_data.get("currency"):
                 txn_data["billing_currency"] = txn_data["currency"]
 
-            # Remove keys passed explicitly to avoid "multiple values for keyword argument"
-            txn_fields = {k: v for k, v in txn_data.items() if k not in ("account_number", "statement_id")}
+            # Use per-transaction account_id (set by DataNormalizer for multi-card
+            # statements), falling back to the statement-level account_id.
+            txn_account_id = txn_data.get("account_id") or account_id
+            txn_account_number = txn_data.get("account_number") or statement.account_number
+
+            txn_fields = {k: v for k, v in txn_data.items() if k not in ("account_number", "statement_id", "account_id")}
 
             txn = Transaction(
                 statement_id=statement.id,
-                account_number=statement.account_number,
+                account_number=txn_account_number,
+                account_id=txn_account_id,
                 **txn_fields,
             )
             self.db.add(txn)
@@ -740,6 +807,20 @@ class StatementService:
 
         await self.db.commit()
 
+        # Permanently delete the old (soft-deleted) statement now that new data is committed
+        if old_statement_id:
+            try:
+                old_stmt = await self.db.execute(
+                    select(Statement).where(Statement.id == old_statement_id)
+                )
+                old_stmt_obj = old_stmt.scalar_one_or_none()
+                if old_stmt_obj:
+                    await self._delete_statement_cascade(old_stmt_obj)
+                    await self.db.commit()
+                    logger.info(f"Permanently deleted old statement id={old_statement_id} (direct path)")
+            except Exception as e:
+                logger.warning(f"Failed to clean up old statement id={old_statement_id}: {e}")
+
         stats = {
             "transactions_added": transactions_added,
             "transactions_skipped": 0,
@@ -791,20 +872,38 @@ class StatementService:
         self.db.add(ai_ext)
         await self.db.commit()
 
+    async def _delete_statement_cascade(self, stmt: Statement):
+        """Delete a statement and all its children using explicit bulk deletes."""
+        sid = stmt.id
+        for model in (AiExtraction, CategorySummary, RewardsSummary, Payment,
+                      InterestCharge, Fee, Transaction):
+            await self.db.execute(sa_delete(model).where(model.statement_id == sid))
+        await self.db.delete(stmt)
+        await self.db.flush()
+
     async def _store_category_summaries(self, statement: Statement, transactions: List[Dict]):
         """Calculate and store category summaries."""
         from app.services.category_engine import CategoryEngine
 
+        # Clear any existing summaries for this statement (safe for re-uploads)
+        await self.db.execute(
+            sa_delete(CategorySummary).where(CategorySummary.statement_id == statement.id)
+        )
+
         category_data: Dict[str, Any] = {}
 
         for txn in transactions:
-            # Determine the best category to use
-            category = (
-                txn.get("category_ai")
-                or txn.get("merchant_category")
-                or txn.get("category_manual")
-                or "Other"
-            )
+            # Determine the best category to use — user override takes priority
+            source = txn.get("category_source", "")
+            if source == "user_override" and txn.get("category_manual"):
+                category = txn["category_manual"]
+            else:
+                category = (
+                    txn.get("category_ai")
+                    or txn.get("merchant_category")
+                    or txn.get("category_manual")
+                    or "Other"
+                )
             amount = float(txn.get("billing_amount") or txn.get("amount") or 0)
 
             if txn.get("debit_credit") == "D":
