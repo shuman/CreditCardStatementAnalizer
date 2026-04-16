@@ -1,6 +1,6 @@
 """
 Alembic migration environment.
-Configured for async SQLAlchemy with aiosqlite.
+Supports SQLite (local dev) and PostgreSQL (Railway production).
 """
 import asyncio
 from logging.config import fileConfig
@@ -21,7 +21,6 @@ from app.models import (  # noqa: F401
     LiabilityTemplate, MonthlyRecord, MonthlyLiability
 )
 
-
 config = context.config
 
 if config.config_file_name is not None:
@@ -30,25 +29,35 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def _is_sqlite(url: str) -> bool:
+    return "sqlite" in url.lower()
+
+
 def run_migrations_offline() -> None:
     """Run migrations in offline mode (no live DB connection)."""
-    url = config.get_main_option("sqlalchemy.url")
+    from app.config import settings
+    url = settings.get_database_url
+    # Use sync driver for offline mode
+    sync_url = url.replace("sqlite+aiosqlite", "sqlite").replace(
+        "postgresql+asyncpg", "postgresql+psycopg2"
+    )
     context.configure(
-        url=url,
+        url=sync_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        render_as_batch=True,  # Required for SQLite ALTER TABLE support
+        render_as_batch=_is_sqlite(sync_url),
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection: Connection) -> None:
+    is_batch = _is_sqlite(str(connection.engine.url))
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
-        render_as_batch=True,  # Required for SQLite ALTER TABLE support
+        render_as_batch=is_batch,  # Only needed for SQLite
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -56,24 +65,18 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     """Run migrations using async engine."""
-    # Import here to avoid circular imports at module level
     from app.config import settings
 
+    db_url = settings.get_database_url  # e.g. postgresql+asyncpg://... or sqlite+aiosqlite://...
+
     configuration = config.get_section(config.config_ini_section, {})
-    # Use the app's database URL (strip async driver for alembic sync usage)
-    db_url = settings.get_database_url
-    configuration["sqlalchemy.url"] = db_url.replace(
-        "sqlite+aiosqlite", "sqlite"
-    ).replace(
-        "postgresql+asyncpg", "postgresql"
-    )
+    configuration["sqlalchemy.url"] = db_url
 
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        # aiosqlite/asyncpg needs the async driver
-        url=settings.get_database_url,
+        url=db_url,
     )
 
     async with connectable.connect() as connection:
