@@ -53,6 +53,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠ Scheduler failed to start: {e}")
 
+    # 5. Ensure upload directories exist (critical for Railway Volume mount)
+    import os as _os
+    for _subdir in ["", "temp"]:
+        _path = _os.path.join(settings.upload_dir, _subdir) if _subdir else settings.upload_dir
+        _os.makedirs(_path, exist_ok=True)
     print(f"✓ Upload directory: {settings.upload_dir}")
     print(f"✓ Claude Vision: {'enabled' if settings.anthropic_api_key else 'disabled (set ANTHROPIC_API_KEY)'}")
     print(f"✓ Server starting on {settings.host}:{settings.port}")
