@@ -24,7 +24,10 @@ class LiabilityTemplate(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="liability_templates", foreign_keys=[user_id])(Base):
+    user: Mapped["User"] = relationship("User", back_populates="liability_templates", foreign_keys=[user_id])
+
+
+class MonthlyRecord(Base):
     """Container for a specific month's liabilities."""
     __tablename__ = "monthly_records"
 
