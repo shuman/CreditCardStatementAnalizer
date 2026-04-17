@@ -1,17 +1,20 @@
 """
 Main FastAPI application — Personal Finance Intelligence Platform.
 """
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from contextlib import asynccontextmanager
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
-from app.database import init_db
-from app.routers import upload, statements, ml
+from app.database import init_db, get_db
+from app.routers import upload, statements, ml, auth
 from app.routers import accounts, categories, advisor, budgets, reports
 from app.routers import daily_expenses, daily_income, liabilities
+from app.utils.page_auth import require_login
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @asynccontextmanager
@@ -78,6 +81,16 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Add session middleware for web authentication
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret_key,
+    session_cookie="pfi_session",
+    max_age=86400 * 7,  # 7 days
+    same_site="lax",
+    https_only=False,  # Set to True in production with HTTPS
+)
+
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -85,10 +98,12 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 templates.env.globals["app_name"] = settings.app_name
 templates.env.globals["app_version"] = settings.app_version
+templates.env.globals["google_oauth_client_id"] = settings.google_oauth_client_id or ""
 
 # ---------------------------------------------------------------------------
 # API routers
 # ---------------------------------------------------------------------------
+app.include_router(auth.router)        # Authentication (login/logout)
 app.include_router(upload.router)
 app.include_router(statements.router)
 app.include_router(ml.router)          # Legacy ML router (kept for backward compat)
@@ -106,62 +121,136 @@ app.include_router(liabilities.router)
 # HTML page routes
 # ---------------------------------------------------------------------------
 
+# Public auth pages (no login required)
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Login page - redirects to dashboard if already logged in"""
+    if request.session.get("user_id"):
+        return RedirectResponse(url="/dashboard", status_code=303)
+    return templates.TemplateResponse(request, "login.html", {"title": "Login"})
+
+
+@app.get("/signup", response_class=HTMLResponse)
+async def signup_page(request: Request):
+    """Signup page - redirects to dashboard if already logged in"""
+    if request.session.get("user_id"):
+        return RedirectResponse(url="/dashboard", status_code=303)
+    return templates.TemplateResponse(request, "signup.html", {"title": "Sign Up"})
+
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_page(request: Request):
+    """Forgot password page"""
+    return templates.TemplateResponse(request, "forgot_password.html", {"title": "Forgot Password"})
+
+
+@app.get("/reset-password", response_class=HTMLResponse)
+async def reset_password_page(request: Request):
+    """Reset password page (with token in query params)"""
+    return templates.TemplateResponse(request, "reset_password.html", {"title": "Reset Password"})
+
+
+# Protected pages (require login)
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return templates.TemplateResponse(request, "index.html", {"title": "Upload Statement"})
+async def home(request: Request, db: AsyncSession = Depends(get_db)):
+    """Home page - upload statement (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "index.html", {"title": "Upload Statement", "user": user})
 
 
 @app.get("/statements", response_class=HTMLResponse)
-async def statements_page(request: Request):
-    return templates.TemplateResponse(request, "statement_list.html", {"title": "Statements"})
+async def statements_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Statements list page (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "statement_list.html", {"title": "Statements", "user": user})
 
 
 @app.get("/statements/{statement_id}", response_class=HTMLResponse)
-async def statement_detail_page(request: Request, statement_id: int):
+async def statement_detail_page(request: Request, statement_id: int, db: AsyncSession = Depends(get_db)):
+    """Statement detail page (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
         request, "statement_detail.html",
-        {"title": "Statement Detail", "statement_id": statement_id}
+        {"title": "Statement Detail", "statement_id": statement_id, "user": user}
     )
 
 
 @app.get("/reports", response_class=HTMLResponse)
-async def reports_page(request: Request):
-    return templates.TemplateResponse(request, "reports.html", {"title": "Reports"})
+async def reports_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Reports page (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "reports.html", {"title": "Reports", "user": user})
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard_page(request: Request):
-    return templates.TemplateResponse(request, "dashboard.html", {"title": "Dashboard"})
+async def dashboard_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Dashboard page (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "dashboard.html", {"title": "Dashboard", "user": user})
 
 
 @app.get("/preview", response_class=HTMLResponse)
-async def preview_page(request: Request):
-    return templates.TemplateResponse(request, "preview.html", {"title": "Preview Statement"})
+async def preview_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Preview statement page (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "preview.html", {"title": "Preview Statement", "user": user})
 
 
 @app.get("/transactions", response_class=HTMLResponse)
-async def all_transactions_page(request: Request):
-    return templates.TemplateResponse(request, "all_transactions.html", {"title": "All Transactions"})
+async def all_transactions_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """All transactions page (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "all_transactions.html", {"title": "All Transactions", "user": user})
 
 
 @app.get("/accounts", response_class=HTMLResponse)
-async def accounts_page(request: Request):
-    return templates.TemplateResponse(request, "accounts.html", {"title": "My Cards & Accounts"})
+async def accounts_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Accounts page (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "accounts.html", {"title": "My Cards & Accounts", "user": user})
 
 
 @app.get("/advisor", response_class=HTMLResponse)
-async def advisor_page(request: Request):
-    return templates.TemplateResponse(request, "advisor.html", {"title": "AI Advisor"})
+async def advisor_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """AI Advisor page (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "advisor.html", {"title": "AI Advisor", "user": user})
 
 
 @app.get("/daily-expenses", response_class=HTMLResponse)
-async def daily_expenses_page(request: Request):
-    return templates.TemplateResponse(request, "daily_expenses.html", {"title": "Daily Expenses"})
+async def daily_expenses_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Daily expenses page (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "daily_expenses.html", {"title": "Daily Expenses", "user": user})
 
 
 @app.get("/daily-income", response_class=HTMLResponse)
-async def daily_income_page(request: Request):
-    return templates.TemplateResponse(request, "daily_income.html", {"title": "Income Tracker"})
+async def daily_income_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Income tracker page (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "daily_income.html", {"title": "Income Tracker", "user": user})
 
 
 @app.get("/health")

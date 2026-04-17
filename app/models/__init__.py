@@ -16,6 +16,59 @@ from app.database import Base
 
 
 # ---------------------------------------------------------------------------
+# User Model (Multi-tenant authentication)
+# ---------------------------------------------------------------------------
+
+class User(Base):
+    """
+    User model for multi-tenant authentication.
+    All financial data is scoped by user_id foreign key.
+    """
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+
+    # Authentication
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # Profile
+    full_name: Mapped[Optional[str]] = mapped_column(String(200))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    last_login: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    # Relationships (all user-owned data)
+    financial_institutions: Mapped[List["FinancialInstitution"]] = relationship("FinancialInstitution", back_populates="user", cascade="all, delete-orphan")
+    accounts: Mapped[List["Account"]] = relationship("Account", back_populates="user", cascade="all, delete-orphan")
+    category_rules: Mapped[List["CategoryRule"]] = relationship("CategoryRule", back_populates="user", cascade="all, delete-orphan")
+    ai_extractions: Mapped[List["AiExtraction"]] = relationship("AiExtraction", back_populates="user", cascade="all, delete-orphan")
+    insights: Mapped[List["Insight"]] = relationship("Insight", back_populates="user", cascade="all, delete-orphan")
+    budgets: Mapped[List["Budget"]] = relationship("Budget", back_populates="user", cascade="all, delete-orphan")
+    advisor_reports: Mapped[List["AdvisorReport"]] = relationship("AdvisorReport", back_populates="user", cascade="all, delete-orphan")
+    statements: Mapped[List["Statement"]] = relationship("Statement", back_populates="user", cascade="all, delete-orphan")
+    transactions: Mapped[List["Transaction"]] = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
+    fees: Mapped[List["Fee"]] = relationship("Fee", back_populates="user", cascade="all, delete-orphan")
+    interest_charges: Mapped[List["InterestCharge"]] = relationship("InterestCharge", back_populates="user", cascade="all, delete-orphan")
+    rewards_summaries: Mapped[List["RewardsSummary"]] = relationship("RewardsSummary", back_populates="user", cascade="all, delete-orphan")
+    category_summaries: Mapped[List["CategorySummary"]] = relationship("CategorySummary", back_populates="user", cascade="all, delete-orphan")
+    payments: Mapped[List["Payment"]] = relationship("Payment", back_populates="user", cascade="all, delete-orphan")
+    daily_expenses: Mapped[List["DailyExpense"]] = relationship("DailyExpense", back_populates="user", cascade="all, delete-orphan")
+    daily_income: Mapped[List["DailyIncome"]] = relationship("DailyIncome", back_populates="user", cascade="all, delete-orphan")
+    liability_templates: Mapped[List["LiabilityTemplate"]] = relationship("LiabilityTemplate", foreign_keys="[LiabilityTemplate.user_id]", cascade="all, delete-orphan")
+    monthly_records: Mapped[List["MonthlyRecord"]] = relationship("MonthlyRecord", foreign_keys="[MonthlyRecord.user_id]", cascade="all, delete-orphan")
+    monthly_liabilities: Mapped[List["MonthlyLiability"]] = relationship("MonthlyLiability", foreign_keys="[MonthlyLiability.user_id]", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<User(id={self.id}, email={self.email})>"
+
+
+# ---------------------------------------------------------------------------
 # NEW: Financial Institution Registry
 # ---------------------------------------------------------------------------
 
@@ -28,6 +81,8 @@ class FinancialInstitution(Base):
     __tablename__ = "financial_institutions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     short_name: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -49,6 +104,7 @@ class FinancialInstitution(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="financial_institutions")
     accounts: Mapped[List["Account"]] = relationship("Account", back_populates="institution")
 
     def __repr__(self):
@@ -68,6 +124,8 @@ class Account(Base):
     __tablename__ = "accounts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     institution_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("financial_institutions.id", ondelete="SET NULL"), index=True
     )
@@ -108,6 +166,7 @@ class Account(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
 
     # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="accounts")
     institution: Mapped[Optional["FinancialInstitution"]] = relationship(
         "FinancialInstitution", back_populates="accounts"
     )
@@ -133,6 +192,8 @@ class CategoryRule(Base):
     __tablename__ = "category_rules"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # The merchant name pattern (lowercase, stripped) to match against
     merchant_pattern: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
@@ -152,6 +213,9 @@ class CategoryRule(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="category_rules")
 
     __table_args__ = (
         Index("idx_category_rule_merchant", "normalized_merchant"),
@@ -179,6 +243,8 @@ class AiExtraction(Base):
     __tablename__ = "ai_extractions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     statement_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("statements.id", ondelete="SET NULL"), index=True
     )
@@ -202,6 +268,8 @@ class AiExtraction(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="ai_extractions")
     statement: Mapped[Optional["Statement"]] = relationship("Statement", back_populates="ai_extractions")
 
     def __repr__(self):
@@ -221,6 +289,8 @@ class Insight(Base):
     __tablename__ = "insights"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     insight_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     # reward_expiry_alert | fx_cost_report | budget_breach | overspending |
@@ -248,6 +318,8 @@ class Insight(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="insights")
     account: Mapped[Optional["Account"]] = relationship("Account")
 
     def __repr__(self):
@@ -266,6 +338,8 @@ class Budget(Base):
     __tablename__ = "budgets"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     category: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     subcategory: Mapped[Optional[str]] = mapped_column(String(100))
@@ -285,6 +359,8 @@ class Budget(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
 
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="budgets")
     account: Mapped[Optional["Account"]] = relationship("Account")
 
     __table_args__ = (
@@ -308,9 +384,10 @@ class AdvisorReport(Base):
     __tablename__ = "advisor_reports"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
 
     # Which user/account/month this report covers
-    user_id: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     year: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     month: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     account_id: Mapped[Optional[int]] = mapped_column(
@@ -378,6 +455,8 @@ class AdvisorReport(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="advisor_reports")
     account: Mapped[Optional["Account"]] = relationship("Account")
 
     __table_args__ = (
@@ -400,6 +479,8 @@ class Statement(Base):
     __tablename__ = "statements"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # File Information
     filename: Mapped[str] = mapped_column(String(500), unique=True, nullable=False, index=True)
@@ -471,6 +552,7 @@ class Statement(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
 
     # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="statements")
     account: Mapped[Optional["Account"]] = relationship("Account", back_populates="statements")
     transactions: Mapped[List["Transaction"]] = relationship(
         "Transaction", back_populates="statement", cascade="all, delete-orphan"
@@ -518,6 +600,8 @@ class Transaction(Base):
     __tablename__ = "transactions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Foreign Keys
     statement_id: Mapped[int] = mapped_column(
@@ -619,6 +703,7 @@ class Transaction(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
 
     # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="transactions")
     statement: Mapped["Statement"] = relationship("Statement", back_populates="transactions")
     account: Mapped[Optional["Account"]] = relationship("Account")
     category_rule: Mapped[Optional["CategoryRule"]] = relationship("CategoryRule")
@@ -647,6 +732,8 @@ class Fee(Base):
     __tablename__ = "fees"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     statement_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("statements.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -668,6 +755,8 @@ class Fee(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="fees")
     statement: Mapped["Statement"] = relationship("Statement", back_populates="fees")
 
     def __repr__(self):
@@ -683,6 +772,8 @@ class InterestCharge(Base):
     __tablename__ = "interest_charges"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     statement_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("statements.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -702,6 +793,8 @@ class InterestCharge(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="interest_charges")
     statement: Mapped["Statement"] = relationship("Statement", back_populates="interest_charges")
 
     def __repr__(self):
@@ -720,6 +813,8 @@ class RewardsSummary(Base):
     __tablename__ = "rewards_summary"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     statement_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("statements.id", ondelete="CASCADE"),
         nullable=False, unique=True, index=True
@@ -763,6 +858,8 @@ class RewardsSummary(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="rewards_summaries")
     statement: Mapped["Statement"] = relationship("Statement", back_populates="rewards_summary")
 
     def __repr__(self):
@@ -778,6 +875,8 @@ class CategorySummary(Base):
     __tablename__ = "category_summary"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     statement_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("statements.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -795,6 +894,8 @@ class CategorySummary(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="category_summaries")
     statement: Mapped["Statement"] = relationship("Statement", back_populates="category_summaries")
 
     __table_args__ = (
@@ -815,6 +916,8 @@ class Payment(Base):
     __tablename__ = "payments"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     statement_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("statements.id", ondelete="SET NULL"), index=True
     )
@@ -832,6 +935,8 @@ class Payment(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="payments")
     statement: Mapped[Optional["Statement"]] = relationship("Statement", back_populates="payments")
 
     def __repr__(self):
@@ -851,6 +956,8 @@ class DailyExpense(Base):
     __tablename__ = "daily_expenses"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Amount
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
@@ -883,6 +990,9 @@ class DailyExpense(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
     enriched_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="daily_expenses")
+
     def __repr__(self):
         return f"<DailyExpense(id={self.id}, amount={self.amount}, desc={self.description_raw[:30]}, status={self.ai_status})>"
 
@@ -897,8 +1007,10 @@ class DailyIncome(Base):
     Simpler workflow than expenses (fewer categories, minimal AI processing).
     """
     __tablename__ = "daily_income"
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
 
     # Amount
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
@@ -924,6 +1036,9 @@ class DailyIncome(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
     enriched_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
+    # Relationships
+    user: Mapped["User"] = relationship("User", back_populates="daily_income")
+
     def __repr__(self):
         return f"<DailyIncome(id={self.id}, amount={self.amount}, source={self.source_type}, date={self.transaction_date})>"
 
@@ -931,4 +1046,9 @@ class DailyIncome(Base):
 # NEW: Monthly Liabilities (Standalone Tracker)
 # ---------------------------------------------------------------------------
 from .liabilities import LiabilityTemplate, MonthlyRecord, MonthlyLiability
+
+# ---------------------------------------------------------------------------
+# Password Reset Tokens
+# ---------------------------------------------------------------------------
+from .password_reset import PasswordResetToken
 

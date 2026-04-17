@@ -1,6 +1,11 @@
 """
 Database configuration and session management.
 Uses Alembic for migrations on startup (run_migrations=True by default).
+
+Exports:
+    - Base: SQLAlchemy declarative base
+    - get_db: Dependency for getting async database session
+    - get_current_user: Dependency for getting authenticated user (imported from auth router)
 """
 import logging
 from typing import AsyncGenerator

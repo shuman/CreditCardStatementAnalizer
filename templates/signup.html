@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up{% endblock %}
+
+{% block content %}
+<div class="min-h-[80vh] flex items-center justify-center px-4">
+    <div class="max-w-md w-full space-y-8">
+        <!-- Header -->
+        <div class="text-center">
+            <div class="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg mb-4">
+                <i class="fas fa-user-plus text-white text-2xl"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-gray-900">Create an account</h2>
+            <p class="mt-2 text-sm text-gray-600">Start managing your finances with AI-powered insights</p>
+        </div>
+
+        <!-- Error message -->
+        <div id="error-message" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            <i class="fas fa-exclamation-circle mr-2"></i>
+            <span id="error-text"></span>
+        </div>
+
+        <!-- Signup Form -->
+        <form id="signup-form" class="mt-8 space-y-6">
+            <div class="space-y-4">
+                <div>
+                    <label for="full-name" class="block text-sm font-medium text-gray-700 mb-1">Full name</label>
+                    <input id="full-name" name="full-name" type="text" autocomplete="name"
+                        class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                        placeholder="John Doe">
+                </div>
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
+                    <input id="email" name="email" type="email" autocomplete="email" required
+                        class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                        placeholder="you@example.com">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8"
+                        class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                        placeholder="••••••••">
+                    <p class="mt-1 text-xs text-gray-500">Minimum 8 characters</p>
+
+                    <!-- Password strength indicator -->
+                    <div id="password-strength" class="mt-2 hidden">
+                        <div class="flex gap-1 mb-1">
+                            <div class="h-1 flex-1 rounded-full bg-gray-200" data-strength="1"></div>
+                            <div class="h-1 flex-1 rounded-full bg-gray-200" data-strength="2"></div>
+                            <div class="h-1 flex-1 rounded-full bg-gray-200" data-strength="3"></div>
+                            <div class="h-1 flex-1 rounded-full bg-gray-200" data-strength="4"></div>
+                        </div>
+                        <p id="password-strength-text" class="text-xs"></p>
+                    </div>
+                </div>
+                <div>
+                    <label for="confirm-password" class="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+                    <input id="confirm-password" name="confirm-password" type="password" autocomplete="new-password" required minlength="8"
+                        class="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                        placeholder="••••••••">
+                </div>
+            </div>
+
+            <div>
+                <button type="submit" id="signup-btn"
+                    class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                    <span id="signup-btn-text">Create account</span>
+                    <span id="signup-btn-spinner" class="hidden ml-2">
+                        <i class="fas fa-circle-notch fa-spin"></i>
+                    </span>
+                </button>
+            </div>
+        </form>
+
+        <!-- Divider -->
+        <div class="relative">
+            <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-200"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+                <span class="px-4 bg-slate-50 text-gray-500">Or continue with</span>
+            </div>
+        </div>
+
+        <!-- Google Sign Up -->
+        <div>
+            <div id="google-signup-btn"></div>
+        </div>
+
+        <!-- Login Link -->
+        <div class="text-center">
+            <p class="text-sm text-gray-600">
+                Already have an account?
+                <a href="/login" class="font-medium text-indigo-600 hover:text-indigo-500">
+                    Sign in
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Google Sign-In SDK -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+// Password strength checker
+const passwordInput = document.getElementById('password');
+const passwordStrength = document.getElementById('password-strength');
+const passwordStrengthText = document.getElementById('password-strength-text');
+
+passwordInput.addEventListener('input', () => {
+    const password = passwordInput.value;
+    if (!password) {
+        passwordStrength.classList.add('hidden');
+        return;
+    }
+
+    passwordStrength.classList.remove('hidden');
+
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (password.length >= 12) strength++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^a-zA-Z0-9]/.test(password)) strength++;
+
+    // Update visual indicator
+    const bars = document.querySelectorAll('[data-strength]');
+    bars.forEach(bar => bar.classList.remove('bg-red-500', 'bg-yellow-500', 'bg-green-500', 'bg-blue-500'));
+
+    const colors = ['bg-red-500', 'bg-yellow-500', 'bg-green-500', 'bg-blue-500'];
+    const labels = ['Weak', 'Fair', 'Good', 'Strong'];
+
+    const level = Math.min(strength - 1, 3);
+    for (let i = 0; i <= level; i++) {
+        bars[i].classList.add(colors[level]);
+    }
+
+    passwordStrengthText.textContent = labels[level] || 'Too weak';
+    passwordStrengthText.className = `text-xs ${strength < 2 ? 'text-red-600' : strength < 3 ? 'text-yellow-600' : 'text-green-600'}`;
+});
+
+// Email/Password Signup
+document.getElementById('signup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const fullName = document.getElementById('full-name').value.trim();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+
+    const signupBtn = document.getElementById('signup-btn');
+    const signupBtnText = document.getElementById('signup-btn-text');
+    const signupBtnSpinner = document.getElementById('signup-btn-spinner');
+    const errorMessage = document.getElementById('error-message');
+    const errorText = document.getElementById('error-text');
+
+    errorMessage.classList.add('hidden');
+
+    // Validate passwords match
+    if (password !== confirmPassword) {
+        errorText.textContent = 'Passwords do not match';
+        errorMessage.classList.remove('hidden');
+        return;
+    }
+
+    // Show loading state
+    signupBtn.disabled = true;
+    signupBtnText.textContent = 'Creating account...';
+    signupBtnSpinner.classList.remove('hidden');
+
+    try {
+        const response = await fetch('/api/auth/signup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email,
+                password,
+                full_name: fullName || null
+            }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Success - redirect to dashboard
+            window.location.href = '/dashboard';
+        } else {
+            // Error
+            errorText.textContent = data.detail || 'Failed to create account';
+            errorMessage.classList.remove('hidden');
+        }
+    } catch (error) {
+        errorText.textContent = 'Network error. Please try again.';
+        errorMessage.classList.remove('hidden');
+    } finally {
+        // Reset button state
+        signupBtn.disabled = false;
+        signupBtnText.textContent = 'Create account';
+        signupBtnSpinner.classList.add('hidden');
+    }
+});
+
+// Google Sign-Up (same as sign-in, creates account if needed)
+function handleGoogleCallback(response) {
+    fetch('/api/auth/google/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            credential: response.credential
+        }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.access_token) {
+            // Success - redirect to dashboard
+            window.location.href = '/dashboard';
+        } else {
+            throw new Error(data.detail || 'Google sign-up failed');
+        }
+    })
+    .catch(error => {
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        errorText.textContent = error.message || 'Google sign-up failed. Please try again.';
+        errorMessage.classList.remove('hidden');
+    });
+}
+
+// Initialize Google Sign-In
+window.onload = function() {
+    google.accounts.id.initialize({
+        client_id: '{{ google_oauth_client_id }}',
+        callback: handleGoogleCallback
+    });
+
+    // Render button
+    google.accounts.id.renderButton(
+        document.getElementById('google-signup-btn'),
+        {
+            theme: 'outline',
+            size: 'large',
+            text: 'signup_with',
+            width: document.getElementById('google-signup-btn').offsetWidth || 400
+        }
+    );
+};
+</script>
+{% endblock %}

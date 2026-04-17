@@ -12,6 +12,8 @@ import shutil
 
 from app.database import get_db
 from app.services import StatementService
+from app.routers.auth import get_current_user
+from app.models import User
 from pydantic import BaseModel
 from datetime import date
 from decimal import Decimal
@@ -64,10 +66,11 @@ class TransactionDetail(BaseModel):
 async def list_statements(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
-    Get list of all uploaded statements.
+    Get list of all uploaded statements for the current user.
 
     - **limit**: Maximum number of statements to return (default: 100, max: 500)
     - **offset**: Number of statements to skip (for pagination)
@@ -78,7 +81,7 @@ async def list_statements(
     from app.models import Statement, Transaction
 
     service = StatementService(db)
-    statements = await service.get_all_statements(limit=limit, offset=offset)
+    statements = await service.get_all_statements(limit=limit, offset=offset, user_id=current_user.id)
 
     # Add transaction count to each statement
     result = []

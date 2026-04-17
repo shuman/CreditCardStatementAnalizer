@@ -67,6 +67,7 @@ class StatementService:
         self,
         file_content: bytes,
         filename: str,
+        user_id: int,
         password: Optional[str] = None,
         bank_name: str = "Amex",
         account_id: Optional[int] = None,
@@ -81,12 +82,12 @@ class StatementService:
         """
         file_hash = hashlib.sha256(file_content).hexdigest()
 
-        existing = await self._check_duplicate_filename(filename)
+        existing = await self._check_duplicate_filename(filename, user_id)
         if existing:
             raise ValueError(
                 f"Statement with filename '{filename}' already exists (ID: {existing.id})"
             )
-        existing = await self._check_duplicate_hash(file_hash)
+        existing = await self._check_duplicate_hash(file_hash, user_id)
         if existing:
             raise ValueError(
                 f"Identical statement file already uploaded (ID: {existing.id})"
@@ -951,15 +952,21 @@ class StatementService:
                 "These dates must be present in the PDF."
             )
 
-    async def _check_duplicate_filename(self, filename: str) -> Optional[Statement]:
+    async def _check_duplicate_filename(self, filename: str, user_id: int) -> Optional[Statement]:
         result = await self.db.execute(
-            select(Statement).where(Statement.filename == filename)
+            select(Statement).where(
+                Statement.filename == filename,
+                Statement.user_id == user_id
+            )
         )
         return result.scalar_one_or_none()
 
-    async def _check_duplicate_hash(self, file_hash: str) -> Optional[Statement]:
+    async def _check_duplicate_hash(self, file_hash: str, user_id: int) -> Optional[Statement]:
         result = await self.db.execute(
-            select(Statement).where(Statement.pdf_hash == file_hash)
+            select(Statement).where(
+                Statement.pdf_hash == file_hash,
+                Statement.user_id == user_id
+            )
         )
         return result.scalar_one_or_none()
 
@@ -967,15 +974,19 @@ class StatementService:
     # Read methods (unchanged)
     # ------------------------------------------------------------------
 
-    async def get_statement(self, statement_id: int) -> Optional[Statement]:
+    async def get_statement(self, statement_id: int, user_id: int) -> Optional[Statement]:
         result = await self.db.execute(
-            select(Statement).where(Statement.id == statement_id)
+            select(Statement).where(
+                Statement.id == statement_id,
+                Statement.user_id == user_id
+            )
         )
         return result.scalar_one_or_none()
 
-    async def get_all_statements(self, limit: int = 100, offset: int = 0) -> List[Statement]:
+    async def get_all_statements(self, user_id: int, limit: int = 100, offset: int = 0) -> List[Statement]:
         result = await self.db.execute(
             select(Statement)
+            .where(Statement.user_id == user_id)
             .order_by(Statement.statement_date.desc())
             .limit(limit)
             .offset(offset)
@@ -985,12 +996,16 @@ class StatementService:
     async def get_transactions(
         self,
         statement_id: int,
+        user_id: int,
         category: Optional[str] = None,
         merchant: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> List[Transaction]:
-        query = select(Transaction).where(Transaction.statement_id == statement_id)
+        query = select(Transaction).where(
+            Transaction.statement_id == statement_id,
+            Transaction.user_id == user_id
+        )
         if category:
             query = query.where(Transaction.merchant_category == category)
         if merchant:

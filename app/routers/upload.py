@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from app.database import get_db
+from app.models import User
+from app.routers.auth import get_current_user
 from app.services import StatementService
 from app.config import settings
 from app.parsers import ParserFactory, AmexParser
@@ -108,6 +110,7 @@ async def preview_statement(
         description="If true, reuse cached AI extraction for identical PDFs (same file hash)",
     ),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Parse PDF and return extracted data for preview before saving.

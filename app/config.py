@@ -2,6 +2,7 @@
 Application configuration using Pydantic Settings.
 Loads configuration from environment variables and .env file.
 """
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
@@ -23,6 +24,28 @@ class Settings(BaseSettings):
     app_name: str = "Personal Finance Intelligence"
     app_version: str = "2.0.0"
     debug: bool = True
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def coerce_debug_value(cls, value):
+        """Allow DEBUG env values like WARN/INFO without raising validation errors."""
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "on", "debug"}:
+                return True
+            if normalized in {
+                "0",
+                "false",
+                "no",
+                "off",
+                "warn",
+                "warning",
+                "info",
+                "error",
+                "critical",
+            }:
+                return False
+        return value
 
     # Database
     database_url: str = "sqlite+aiosqlite:///./statements.db"
@@ -49,6 +72,36 @@ class Settings(BaseSettings):
 
     # Financial defaults
     default_currency: str = "BDT"
+
+    # Authentication & Security
+    jwt_secret_key: str = "your-secret-key-change-in-production-use-openssl-rand-hex-32"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 1440  # 24 hours
+    session_secret_key: str = "your-session-secret-change-in-production"
+    session_timeout_minutes: int = 30  # Auto-logout after 30 minutes of inactivity
+
+    # Google OAuth
+    google_oauth_client_id: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_CLIENT_ID"),
+    )
+    google_oauth_client_secret: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("GOOGLE_OAUTH_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET"),
+    )
+    google_oauth_redirect_uri: str = "http://localhost:8000/api/auth/google/callback"
+
+    # SMTP Email Configuration (for password reset)
+    smtp_host: Optional[str] = None
+    smtp_port: int = 587
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_from_email: str = "noreply@personalfinance.app"
+    smtp_from_name: str = "Personal Finance Intelligence"
+
+    # Frontend URL (for password reset links)
+    frontend_url: str = "http://localhost:8000"
+    password_reset_token_expire_minutes: int = 60  # 1 hour
 
     @property
     def max_file_size_bytes(self) -> int:

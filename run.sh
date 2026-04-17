@@ -1,6 +1,9 @@
 #!/bin/bash
 # Run script for Credit Card Statement Analyzer
 
+COMMAND="$1"
+shift || true
+
 echo "Starting Credit Card Statement Analyzer..."
 echo ""
 
@@ -16,6 +19,13 @@ else
 fi
 
 echo ""
+
+# CLI user management commands
+if [ "$COMMAND" = "create-user" ] || [ "$COMMAND" = "set-password" ]; then
+    python manage_user.py "$COMMAND" "$@"
+    exit $?
+fi
+
 echo "Starting FastAPI server..."
 echo "Access the application at: http://localhost:8000"
 echo ""

@@ -109,6 +109,7 @@
 <body class="bg-slate-50 text-gray-800 font-sans antialiased">
 
     <!-- Top Navigation Bar -->
+    {% if request.url.path != '/login' %}
     <header class="relative sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/60">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-14">
@@ -121,7 +122,8 @@
                     </div>
                 </a>
 
-                <!-- Desktop Navigation -->
+                <!-- Desktop Navigation (authenticated users only) -->
+                {% if user %}
                 <nav class="hidden md:flex items-center gap-1">
                     <a href="/dashboard" data-nav="/dashboard"
                         class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
@@ -174,16 +176,20 @@
                         <span>Liabilities</span>
                     </a>
                 </nav>
+                {% endif %}
 
                 <!-- Mobile hamburger -->
+                {% if user %}
                 <button id="mobileMenuBtn"
                     class="md:hidden p-2 -mr-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                     aria-label="Menu">
                     <i class="fas fa-bars text-lg"></i>
                 </button>
+                {% endif %}
             </div>
         </div>
 
+        {% if user %}
         <!-- Mobile dropdown menu (absolute so it overlays page content) -->
         <div id="mobileMenu"
             class="mobile-menu closed md:hidden absolute left-0 right-0 top-full border-t border-gray-100 bg-white/95 backdrop-blur-lg shadow-lg">
@@ -230,7 +236,9 @@
                 </a>
             </div>
         </div>
+        {% endif %}
     </header>
+    {% endif %}
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -242,7 +250,15 @@
         <div
             class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
             <p class="text-xs text-gray-400">{{ app_name }} &middot; Built with FastAPI &amp; Python</p>
-            <p class="text-xs text-gray-400">v{{ app_version }} &middot; &copy; 2026</p>
+            <div class="text-xs text-gray-400">
+                {% if user %}
+                <span>{{ user.email }}</span>
+                <span>&middot;</span>
+                <a href="#" onclick="logout(); return false;" class="text-gray-500 hover:text-gray-700">Logout</a>
+                <span>&middot;</span>
+                {% endif %}
+                <span>v{{ app_version }} &middot; &copy; 2026</span>
+            </div>
         </div>
     </footer>
 
@@ -262,6 +278,9 @@
                 // Mobile menu toggle
                 const btn = document.getElementById('mobileMenuBtn');
                 const menu = document.getElementById('mobileMenu');
+                if (!btn || !menu) {
+                    return;
+                }
                 let isOpen = false;
                 btn.addEventListener('click', () => {
                     isOpen = !isOpen;
@@ -277,7 +296,26 @@
                     btn.querySelector('i').className = 'fas fa-bars text-lg';
                 }));
             })();
-    </script>
+            // Logout function
+            async function logout() {
+                try {
+                    const response = await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    if (response.ok) {
+                        window.location.href = '/login';
+                    } else {
+                        console.error('Logout failed');
+                        // Still redirect to login even if logout fails
+                        window.location.href = '/login';
+                    }
+                } catch (error) {
+                    console.error('Logout error:', error);
+                    window.location.href = '/login';
+                }
+            }    </script>
 
     {% block extra_scripts %}{% endblock %}
 </body>

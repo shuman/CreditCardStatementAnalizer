@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, Form
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models.liabilities import LiabilityTemplate, MonthlyRecord, MonthlyLiability
+from app.utils.page_auth import require_login
 
 router = APIRouter(prefix="/liabilities", tags=["liabilities"])
 templates = Jinja2Templates(directory="templates")
@@ -37,19 +38,27 @@ class LiabilityCreate(BaseModel):
     name: str
     amount: Decimal
     priority: str = "Secondary"
-    
+
 class ReorderItem(BaseModel):
     id: int
     sort_order: int
 
 # --- HTML Routes ---
 @router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard_page(request: Request):
-    return templates.TemplateResponse(request, "liabilities/dashboard.html", {"title": "Monthly Liabilities"})
+async def dashboard_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Liabilities dashboard page (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "liabilities/dashboard.html", {"title": "Monthly Liabilities", "user": user})
 
 @router.get("/templates", response_class=HTMLResponse)
-async def templates_page(request: Request):
-    return templates.TemplateResponse(request, "liabilities/templates.html", {"title": "Liability Templates"})
+async def templates_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Liability templates page (requires login)"""
+    user = await require_login(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(request, "liabilities/templates.html", {"title": "Liability Templates", "user": user})
 
 # --- API Routes ---
 @router.get("/api/templates")
@@ -70,12 +79,12 @@ async def get_monthly_record(year: int, month: int, db: AsyncSession = Depends(g
     stmt = select(MonthlyRecord).where(MonthlyRecord.year == year, MonthlyRecord.month == month).options(selectinload(MonthlyRecord.liabilities))
     result = await db.execute(stmt)
     record = result.scalars().first()
-    
+
     if record:
         liabilities = record.liabilities
         liabilities.sort(key=lambda x: (x.sort_order, x.id))
         return {"data": record, "liabilities": liabilities}
-    
+
     return {"data": None, "liabilities": []}
 
 @router.post("/api/months/{year}/{month}/generate")
@@ -85,17 +94,17 @@ async def generate_month(year: int, month: int, db: AsyncSession = Depends(get_d
     result = await db.execute(stmt)
     if result.scalars().first():
         raise HTTPException(status_code=400, detail="Month already generated")
-        
+
     # Get active templates
     t_result = await db.execute(select(LiabilityTemplate).where(LiabilityTemplate.is_active == True))
     active_templates = t_result.scalars().all()
-    
+
     # Create Record
     record = MonthlyRecord(year=year, month=month)
     db.add(record)
     await db.commit()
     await db.refresh(record)
-    
+
     # Create liabilities
     for idx, t in enumerate(active_templates):
         liability = MonthlyLiability(
@@ -108,7 +117,7 @@ async def generate_month(year: int, month: int, db: AsyncSession = Depends(get_d
             sort_order=idx
         )
         db.add(liability)
-    
+
     await db.commit()
     return {"status": "success", "record_id": record.id}
 
@@ -118,14 +127,14 @@ async def update_status(liability_id: int, data: StatusUpdate, db: AsyncSession 
     liability = result.scalars().first()
     if not liability:
         raise HTTPException(status_code=404, detail="Not found")
-        
+
     liability.status = data.status
     if data.paid_amount is not None:
         liability.paid_amount = data.paid_amount
-    
+
     # If explicitly passed or null
     liability.paid_date = data.paid_date
-        
+
     await db.commit()
     return {"status": "success"}
 
@@ -135,7 +144,7 @@ async def edit_liability(liability_id: int, data: LiabilityUpdate, db: AsyncSess
     liability = result.scalars().first()
     if not liability:
         raise HTTPException(status_code=404, detail="Not found")
-        
+
     if data.name is not None:
         liability.name = data.name
     if data.amount is not None:
@@ -144,7 +153,7 @@ async def edit_liability(liability_id: int, data: LiabilityUpdate, db: AsyncSess
         liability.priority = data.priority
     if data.paid_date is not None:
         liability.paid_date = data.paid_date
-        
+
     await db.commit()
     return {"status": "success"}
 
@@ -154,7 +163,7 @@ async def delete_liability(liability_id: int, db: AsyncSession = Depends(get_db)
     liability = result.scalars().first()
     if not liability:
         raise HTTPException(status_code=404, detail="Not found")
-        
+
     await db.delete(liability)
     await db.commit()
     return {"status": "success"}
@@ -169,7 +178,7 @@ async def add_one_off_liability(data: LiabilityCreate, db: AsyncSession = Depend
     )
     last_item = result.scalars().first()
     next_order = (last_item.sort_order + 1) if last_item else 0
-    
+
     item = MonthlyLiability(
         monthly_record_id=data.record_id,
         name=data.name,
