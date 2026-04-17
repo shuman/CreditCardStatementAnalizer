@@ -1,7 +1,9 @@
 #!/bin/bash
 # Run script for Credit Card Statement Analyzer
 
-COMMAND="$1"
+set -euo pipefail
+
+COMMAND="${1:-}"
 shift || true
 
 echo "Starting Credit Card Statement Analyzer..."
@@ -30,5 +32,22 @@ echo "Starting FastAPI server..."
 echo "Access the application at: http://localhost:8000"
 echo ""
 
-# Run the application
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Runtime configuration
+HOST="${HOST:-0.0.0.0}"
+PORT="${PORT:-8000}"
+APP_ENV="${APP_ENV:-development}"
+UVICORN_RELOAD="${UVICORN_RELOAD:-}"
+
+if [ -z "$UVICORN_RELOAD" ]; then
+    if [ "$APP_ENV" = "development" ]; then
+        UVICORN_RELOAD="true"
+    else
+        UVICORN_RELOAD="false"
+    fi
+fi
+
+if [ "$UVICORN_RELOAD" = "true" ]; then
+    uvicorn app.main:app --host "$HOST" --port "$PORT" --reload
+else
+    uvicorn app.main:app --host "$HOST" --port "$PORT"
+fi

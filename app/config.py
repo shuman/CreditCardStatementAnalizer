@@ -2,7 +2,7 @@
 Application configuration using Pydantic Settings.
 Loads configuration from environment variables and .env file.
 """
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
@@ -23,7 +23,15 @@ class Settings(BaseSettings):
     # Application
     app_name: str = "Personal Finance Intelligence"
     app_version: str = "2.0.0"
-    debug: bool = True
+    app_env: str = "development"
+    debug: bool = False
+
+    @field_validator("app_env", mode="before")
+    @classmethod
+    def normalize_app_env(cls, value):
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
 
     @field_validator("debug", mode="before")
     @classmethod
@@ -46,6 +54,20 @@ class Settings(BaseSettings):
             }:
                 return False
         return value
+
+    @model_validator(mode="after")
+    def validate_security_defaults(self):
+        """Fail fast when running production with placeholder secrets."""
+        if self.app_env == "production":
+            weak_jwt_prefix = "your-secret-key-change-in-production"
+            weak_session_prefix = "your-session-secret-change-in-production"
+
+            if self.jwt_secret_key.startswith(weak_jwt_prefix):
+                raise ValueError("JWT secret key must be set in production")
+            if self.session_secret_key.startswith(weak_session_prefix):
+                raise ValueError("Session secret key must be set in production")
+
+        return self
 
     # Database
     database_url: str = "sqlite+aiosqlite:///./statements.db"
@@ -102,6 +124,10 @@ class Settings(BaseSettings):
     # Frontend URL (for password reset links)
     frontend_url: str = "http://localhost:8000"
     password_reset_token_expire_minutes: int = 60  # 1 hour
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env == "production"
 
     @property
     def max_file_size_bytes(self) -> int:

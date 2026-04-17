@@ -88,7 +88,7 @@ app.add_middleware(
     session_cookie="pfi_session",
     max_age=86400 * 7,  # 7 days
     same_site="lax",
-    https_only=False,  # Set to True in production with HTTPS
+    https_only=settings.is_production,
 )
 
 # Mount static files

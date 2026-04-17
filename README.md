@@ -38,8 +38,10 @@ pip install -r requirements.txt
 
 ```env
 DATABASE_URL=postgresql+asyncpg://postgres@localhost:5434/pfi_db
+APP_ENV=development
+DEBUG=False
+JWT_SECRET_KEY=replace-with-openssl-rand-hex-32
 SESSION_SECRET_KEY=change-me
-SECRET_KEY=change-me-too
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 ```
@@ -47,7 +49,7 @@ GOOGLE_OAUTH_CLIENT_SECRET=
 4. Run the app:
 
 ```bash
-uvicorn app.main:app --reload
+bash run.sh
 ```
 
 Open: http://localhost:8000
@@ -57,8 +59,11 @@ Open: http://localhost:8000
 ### App Runner
 
 ```bash
-# Start server (default behavior)
+# Start server (development defaults)
 bash run.sh
+
+# Production-style run (no reload)
+APP_ENV=production UVICORN_RELOAD=false bash run.sh
 ```
 
 ### User Management CLI
@@ -110,6 +115,16 @@ For the current ID-token flow, redirect URI is not actively used. If Google asks
 - If login fails after DB/schema changes, run migrations and verify the `users` table matches current models.
 - Use strong secrets in production.
 - Keep `.env` out of version control.
+
+## Production Checklist
+
+- Set `APP_ENV=production`.
+- Set strong `JWT_SECRET_KEY` and `SESSION_SECRET_KEY` values.
+- Use PostgreSQL via `DATABASE_URL`.
+- Run behind HTTPS and a reverse proxy (Nginx/Caddy/Cloud Run ingress).
+- Ensure SMTP values are configured if password reset is enabled.
+- Keep `UVICORN_RELOAD=false` in production.
+- Remove local artifacts (`*.db`, `*.dump`, backups) from any release bundles.
 
 ## License
 

@@ -30,8 +30,12 @@ wheels/
 # Database
 *.db
 *.sqlite
+*.dump
+*.backup
 statements.db
 credit_statements.db
+statements.db.backup
+pfi_db.dump
 
 # Uploads (sensitive user data)
 static/uploads/
@@ -58,6 +62,10 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local maintenance artifacts
+fix_migration.sql
+ROUTER_PROTECTION_GUIDE.py
 
 # Analysis scripts
 analyze_pdf.py
