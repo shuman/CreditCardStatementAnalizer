@@ -7,6 +7,8 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from contextlib import asynccontextmanager
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from app.config import settings
 from app.database import init_db, get_db
@@ -15,6 +17,21 @@ from app.routers import accounts, categories, advisor, budgets, reports
 from app.routers import daily_expenses, daily_income, liabilities
 from app.utils.page_auth import require_login
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to every response."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        if settings.is_production:
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+        return response
 
 
 @asynccontextmanager
@@ -90,6 +107,9 @@ app.add_middleware(
     same_site="lax",
     https_only=settings.is_production,
 )
+
+# Add security headers to all responses
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")

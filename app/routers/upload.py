@@ -133,7 +133,10 @@ async def preview_statement(
 
         temp_dir = os.path.join(settings.upload_dir, "temp")
         os.makedirs(temp_dir, exist_ok=True)
-        temp_path = os.path.join(temp_dir, file.filename)
+        safe_filename = os.path.basename(file.filename)
+        if not safe_filename:
+            raise HTTPException(status_code=400, detail="Invalid filename")
+        temp_path = os.path.join(temp_dir, safe_filename)
 
         with open(temp_path, 'wb') as f:
             f.write(file_content)
@@ -256,7 +259,6 @@ async def preview_statement(
                 "filename": file.filename,
                 "file_hash": file_hash,
                 "bank_name": effective_bank_name,
-                "password": password,
                 "account_id": account_id,
                 "extraction_method": extraction_method,
                 "extraction_meta": extraction_meta,
@@ -278,7 +280,8 @@ async def preview_statement(
 @router.post("/upload/save")
 async def save_statement(
     data: Dict[str, Any] = Body(...),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Save the previewed and edited statement data to database.
@@ -289,8 +292,13 @@ async def save_statement(
         service = StatementService(db)
         result = await service.save_previewed_data(data)
 
-        # Clean up temp file
+        # Clean up temp file — validate path is within allowed temp directory
+        _allowed_temp = os.path.realpath(os.path.join(settings.upload_dir, "temp"))
         temp_path = data.get("temp_path")
+        if temp_path:
+            temp_path = os.path.realpath(temp_path)
+            if not temp_path.startswith(_allowed_temp + os.sep):
+                temp_path = None
         if temp_path and os.path.exists(temp_path):
             try:
                 os.remove(temp_path)
@@ -311,7 +319,12 @@ async def save_statement(
 
     except ValueError as e:
         # Clean up temp file on validation error
+        _allowed_temp = os.path.realpath(os.path.join(settings.upload_dir, "temp"))
         temp_path = data.get("temp_path")
+        if temp_path:
+            temp_path = os.path.realpath(temp_path)
+            if not temp_path.startswith(_allowed_temp + os.sep):
+                temp_path = None
         if temp_path and os.path.exists(temp_path):
             try:
                 os.remove(temp_path)
@@ -360,7 +373,8 @@ async def upload_statement(
         True,
         description="If true, reuse cached AI extraction for identical PDFs",
     ),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Upload and process a credit card statement PDF (direct save without preview).
@@ -383,13 +397,18 @@ async def upload_statement(
             detail=f"File too large. Maximum size: {settings.max_file_size_mb}MB"
         )
 
+    safe_filename = os.path.basename(file.filename)
+    if not safe_filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
     # Process statement
     service = StatementService(db)
 
     try:
         result = await service.process_statement(
             file_content=file_content,
-            filename=file.filename,
+            filename=safe_filename,
+            user_id=current_user.id,
             password=password,
             bank_name=bank_name,
             account_id=account_id,
