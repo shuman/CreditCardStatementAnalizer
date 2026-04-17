@@ -60,9 +60,9 @@ class User(Base):
     payments: Mapped[List["Payment"]] = relationship("Payment", back_populates="user", cascade="all, delete-orphan")
     daily_expenses: Mapped[List["DailyExpense"]] = relationship("DailyExpense", back_populates="user", cascade="all, delete-orphan")
     daily_income: Mapped[List["DailyIncome"]] = relationship("DailyIncome", back_populates="user", cascade="all, delete-orphan")
-    liability_templates: Mapped[List["LiabilityTemplate"]] = relationship("LiabilityTemplate", foreign_keys="[LiabilityTemplate.user_id]", cascade="all, delete-orphan")
-    monthly_records: Mapped[List["MonthlyRecord"]] = relationship("MonthlyRecord", foreign_keys="[MonthlyRecord.user_id]", cascade="all, delete-orphan")
-    monthly_liabilities: Mapped[List["MonthlyLiability"]] = relationship("MonthlyLiability", foreign_keys="[MonthlyLiability.user_id]", cascade="all, delete-orphan")
+    liability_templates: Mapped[List["LiabilityTemplate"]] = relationship("LiabilityTemplate", back_populates="user", foreign_keys="[LiabilityTemplate.user_id]", cascade="all, delete-orphan")
+    monthly_records: Mapped[List["MonthlyRecord"]] = relationship("MonthlyRecord", back_populates="user", foreign_keys="[MonthlyRecord.user_id]", cascade="all, delete-orphan")
+    monthly_liabilities: Mapped[List["MonthlyLiability"]] = relationship("MonthlyLiability", back_populates="user", foreign_keys="[MonthlyLiability.user_id]", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"

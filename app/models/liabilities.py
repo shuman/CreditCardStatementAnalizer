@@ -24,10 +24,7 @@ class LiabilityTemplate(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
 
     # Relationships
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
-
-
-class MonthlyRecord(Base):
+    user: Mapped["User"] = relationship("User", back_populates="liability_templates", foreign_keys=[user_id])(Base):
     """Container for a specific month's liabilities."""
     __tablename__ = "monthly_records"
 
@@ -40,7 +37,7 @@ class MonthlyRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
     # Relationships
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    user: Mapped["User"] = relationship("User", back_populates="monthly_records", foreign_keys=[user_id])
     liabilities: Mapped[List["MonthlyLiability"]] = relationship(
         "MonthlyLiability", back_populates="monthly_record", cascade="all, delete-orphan"
     )
@@ -77,6 +74,6 @@ class MonthlyLiability(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
 
     # Relationships
-    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    user: Mapped["User"] = relationship("User", back_populates="monthly_liabilities", foreign_keys=[user_id])
     monthly_record: Mapped["MonthlyRecord"] = relationship("MonthlyRecord", back_populates="liabilities")
     template: Mapped[Optional["LiabilityTemplate"]] = relationship("LiabilityTemplate")
