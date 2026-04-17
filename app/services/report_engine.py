@@ -40,12 +40,15 @@ class ReportEngine:
         period_from: date,
         period_to: date,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> List[Transaction]:
         """Fetch all debit transactions for a period."""
         query = select(Transaction).where(
             Transaction.transaction_date.between(period_from, period_to),
             Transaction.debit_credit == "D",
         )
+        if user_id is not None:
+            query = query.where(Transaction.user_id == user_id)
         if account_id:
             query = query.where(Transaction.account_id == account_id)
         result = await self.db.execute(query)
@@ -69,6 +72,7 @@ class ReportEngine:
         account_id: Optional[int] = None,
         end_year: Optional[int] = None,
         end_month: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """Return [{month: 'YYYY-MM', total: N}, ...] for the last N months."""
         today = date.today()
@@ -90,6 +94,8 @@ class ReportEngine:
                 Transaction.transaction_date.between(period_from, period_to),
                 Transaction.debit_credit == "D",
             )
+            if user_id is not None:
+                query = query.where(Transaction.user_id == user_id)
             if account_id:
                 query = query.where(Transaction.account_id == account_id)
             result = await self.db.execute(query)
@@ -105,12 +111,15 @@ class ReportEngine:
         self,
         period_from: date,
         period_to: date,
+        user_id: Optional[int] = None,
     ) -> List[DailyExpense]:
         """Fetch processed DailyExpense rows for a period (excludes drafts)."""
         query = select(DailyExpense).where(
             DailyExpense.transaction_date.between(period_from, period_to),
             DailyExpense.ai_status == "processed",
         )
+        if user_id is not None:
+            query = query.where(DailyExpense.user_id == user_id)
         result = await self.db.execute(query)
         return result.scalars().all()
 
@@ -131,6 +140,7 @@ class ReportEngine:
         months_back: int,
         end_year: Optional[int] = None,
         end_month: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """Return [{month: 'YYYY-MM', total: N}, ...] for the last N months."""
         today = date.today()
@@ -151,6 +161,8 @@ class ReportEngine:
                 DailyExpense.transaction_date.between(period_from, period_to),
                 DailyExpense.ai_status == "processed",
             )
+            if user_id is not None:
+                query = query.where(DailyExpense.user_id == user_id)
             result = await self.db.execute(query)
             total = float(result.scalar() or 0)
             results.append({"month": f"{y}-{m:02d}", "total": round(total, 2)})
@@ -164,11 +176,14 @@ class ReportEngine:
         self,
         period_from: date,
         period_to: date,
+        user_id: Optional[int] = None,
     ) -> List[DailyIncome]:
         """Fetch all DailyIncome rows for a period."""
         query = select(DailyIncome).where(
             DailyIncome.transaction_date.between(period_from, period_to),
         )
+        if user_id is not None:
+            query = query.where(DailyIncome.user_id == user_id)
         result = await self.db.execute(query)
         return result.scalars().all()
 
@@ -189,6 +204,7 @@ class ReportEngine:
         months_back: int,
         end_year: Optional[int] = None,
         end_month: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """Return [{month: 'YYYY-MM', total: N}, ...] for the last N months."""
         today = date.today()
@@ -208,6 +224,8 @@ class ReportEngine:
             ).where(
                 DailyIncome.transaction_date.between(period_from, period_to),
             )
+            if user_id is not None:
+                query = query.where(DailyIncome.user_id == user_id)
             result = await self.db.execute(query)
             total = float(result.scalar() or 0)
             results.append({"month": f"{y}-{m:02d}", "total": round(total, 2)})
@@ -222,11 +240,12 @@ class ReportEngine:
         year: int,
         month: int,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         period_from, period_to = self._period_bounds(year, month)
 
         # Current month
-        txns = await self._get_debit_transactions(period_from, period_to, account_id)
+        txns = await self._get_debit_transactions(period_from, period_to, account_id, user_id=user_id)
         by_cat = await self._category_distribution(txns)
         total = sum(by_cat.values())
 
@@ -235,7 +254,7 @@ class ReportEngine:
         prev_from, prev_to = self._period_bounds(
             prev_month_date.year, prev_month_date.month
         )
-        prev_txns = await self._get_debit_transactions(prev_from, prev_to, account_id)
+        prev_txns = await self._get_debit_transactions(prev_from, prev_to, account_id, user_id=user_id)
         prev_by_cat = await self._category_distribution(prev_txns)
         prev_total = sum(prev_by_cat.values())
 
@@ -273,9 +292,10 @@ class ReportEngine:
         year: int,
         month: int,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         period_from, period_to = self._period_bounds(year, month)
-        txns = await self._get_debit_transactions(period_from, period_to, account_id)
+        txns = await self._get_debit_transactions(period_from, period_to, account_id, user_id=user_id)
 
         merchant_data: Dict[str, Dict[str, Any]] = {}
         total = 0.0
@@ -327,6 +347,7 @@ class ReportEngine:
         year: int,
         month: int,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Use SubscriptionDetector for multi-layer subscription detection."""
         detector = SubscriptionDetector(self.db)
@@ -341,9 +362,10 @@ class ReportEngine:
         year: int,
         month: int,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
-        cc_months = await self._monthly_totals(6, account_id, end_year=year, end_month=month)
-        cash_months = await self._daily_expense_monthly_totals(6, end_year=year, end_month=month)
+        cc_months = await self._monthly_totals(6, account_id, end_year=year, end_month=month, user_id=user_id)
+        cash_months = await self._daily_expense_monthly_totals(6, end_year=year, end_month=month, user_id=user_id)
         cash_map = {m["month"]: m["total"] for m in cash_months}
 
         # Combined totals (credit card + cash) for trend
@@ -380,8 +402,8 @@ class ReportEngine:
         prev_from, prev_to = self._period_bounds(
             prev_month_date.year, prev_month_date.month
         )
-        curr_txns = await self._get_debit_transactions(period_from, period_to, account_id)
-        prev_txns = await self._get_debit_transactions(prev_from, prev_to, account_id)
+        curr_txns = await self._get_debit_transactions(period_from, period_to, account_id, user_id=user_id)
+        prev_txns = await self._get_debit_transactions(prev_from, prev_to, account_id, user_id=user_id)
 
         curr_cats = await self._category_distribution(curr_txns)
         prev_cats = await self._category_distribution(prev_txns)
@@ -410,6 +432,7 @@ class ReportEngine:
         year: int,
         month: int,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         period_from, period_to = self._period_bounds(year, month)
 
@@ -418,6 +441,8 @@ class ReportEngine:
         stmt_query = select(Statement).where(
             Statement.statement_date.between(period_from, period_to),
         )
+        if user_id is not None:
+            stmt_query = stmt_query.where(Statement.user_id == user_id)
         if account_id:
             stmt_query = stmt_query.where(Statement.account_id == account_id)
         stmt_result = await self.db.execute(stmt_query.order_by(Statement.statement_date.desc()))
@@ -450,12 +475,13 @@ class ReportEngine:
 
         # 3. Budget Adherence (0-20)
         budget_score = 15
-        budget_result = await self.db.execute(
-            select(Budget).where(Budget.is_active == True)
-        )
+        budget_query = select(Budget).where(Budget.is_active == True)
+        if user_id is not None:
+            budget_query = budget_query.where(Budget.user_id == user_id)
+        budget_result = await self.db.execute(budget_query)
         budgets = budget_result.scalars().all()
         if budgets:
-            txns = await self._get_debit_transactions(period_from, period_to, account_id)
+            txns = await self._get_debit_transactions(period_from, period_to, account_id, user_id=user_id)
             spending = await self._category_distribution(txns)
             breached = 0
             for b in budgets:
@@ -475,7 +501,7 @@ class ReportEngine:
 
         # 4. Recurring Ratio (0-20)
         recurring_score = 15
-        txns = await self._get_debit_transactions(period_from, period_to, account_id)
+        txns = await self._get_debit_transactions(period_from, period_to, account_id, user_id=user_id)
         total_spend = sum(float(t.billing_amount or t.amount or 0) for t in txns)
         recurring_spend = sum(
             float(t.billing_amount or t.amount or 0)
@@ -499,7 +525,7 @@ class ReportEngine:
         prev_from, prev_to = self._period_bounds(
             prev_month_date.year, prev_month_date.month
         )
-        prev_txns = await self._get_debit_transactions(prev_from, prev_to, account_id)
+        prev_txns = await self._get_debit_transactions(prev_from, prev_to, account_id, user_id=user_id)
         prev_total = sum(float(t.billing_amount or t.amount or 0) for t in prev_txns)
         if prev_total > 0 and total_spend > 0:
             change_pct = (total_spend - prev_total) / prev_total * 100
@@ -524,11 +550,11 @@ class ReportEngine:
 
         # 6th factor: Savings Mindset (income vs total outflow) — 0-20 pts
         # Only computed if income data exists; neutral 10 otherwise
-        income_entries = await self._get_daily_income(period_from, period_to)
+        income_entries = await self._get_daily_income(period_from, period_to, user_id=user_id)
         income_total = sum(float(e.amount or 0) for e in income_entries)
         savings_mindset_score = 10  # neutral default when no income data
         if income_total > 0:
-            cash_expenses = await self._get_daily_expenses(period_from, period_to)
+            cash_expenses = await self._get_daily_expenses(period_from, period_to, user_id=user_id)
             cash_total = sum(float(e.amount or 0) for e in cash_expenses)
             savings_rate = (income_total - total_spend - cash_total) / income_total
             if savings_rate >= 0.20:
@@ -571,6 +597,7 @@ class ReportEngine:
         year: int,
         month: int,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         period_from, period_to = self._period_bounds(year, month)
         total_days = (period_to - period_from).days + 1
@@ -580,6 +607,8 @@ class ReportEngine:
             Transaction.transaction_date.between(period_from, period_to),
             Transaction.debit_credit == "D",
         )
+        if user_id is not None:
+            query = query.where(Transaction.user_id == user_id)
         if account_id:
             query = query.where(Transaction.account_id == account_id)
         result = await self.db.execute(query.distinct())
@@ -590,6 +619,8 @@ class ReportEngine:
             DailyExpense.transaction_date.between(period_from, period_to),
             DailyExpense.ai_status == "processed",
         )
+        if user_id is not None:
+            cash_query = cash_query.where(DailyExpense.user_id == user_id)
         cash_result = await self.db.execute(cash_query.distinct())
         spend_dates |= {row[0] for row in cash_result.all()}
 
@@ -642,10 +673,11 @@ class ReportEngine:
         year: int,
         month: int,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Category + payment method breakdown for daily cash expenses."""
         period_from, period_to = self._period_bounds(year, month)
-        expenses = await self._get_daily_expenses(period_from, period_to)
+        expenses = await self._get_daily_expenses(period_from, period_to, user_id=user_id)
 
         by_cat = self._daily_expense_category_distribution(expenses)
         total = sum(by_cat.values())
@@ -682,10 +714,11 @@ class ReportEngine:
         year: int,
         month: int,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Income by source type for a month."""
         period_from, period_to = self._period_bounds(year, month)
-        entries = await self._get_daily_income(period_from, period_to)
+        entries = await self._get_daily_income(period_from, period_to, user_id=user_id)
 
         by_src = self._income_source_distribution(entries)
         total = sum(by_src.values())
@@ -712,20 +745,21 @@ class ReportEngine:
         year: int,
         month: int,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Compare income, credit card spend, and cash spend for the month."""
         period_from, period_to = self._period_bounds(year, month)
 
         # Credit card spend
-        cc_txns = await self._get_debit_transactions(period_from, period_to, account_id)
+        cc_txns = await self._get_debit_transactions(period_from, period_to, account_id, user_id=user_id)
         cc_total = sum(float(t.billing_amount or t.amount or 0) for t in cc_txns)
 
         # Cash expenses
-        expenses = await self._get_daily_expenses(period_from, period_to)
+        expenses = await self._get_daily_expenses(period_from, period_to, user_id=user_id)
         cash_total = sum(float(e.amount or 0) for e in expenses)
 
         # Income
-        income_entries = await self._get_daily_income(period_from, period_to)
+        income_entries = await self._get_daily_income(period_from, period_to, user_id=user_id)
         income_total = sum(float(e.amount or 0) for e in income_entries)
 
         combined_expense = round(cc_total + cash_total, 2)
@@ -742,24 +776,28 @@ class ReportEngine:
                 y -= 1
             pf, pt = self._period_bounds(y, m)
 
-            cc_q = await self.db.execute(
-                select(func.coalesce(func.sum(Transaction.billing_amount), 0)).where(
-                    Transaction.transaction_date.between(pf, pt),
-                    Transaction.debit_credit == "D",
-                    *([Transaction.account_id == account_id] if account_id else []),
-                )
+            cc_query = select(func.coalesce(func.sum(Transaction.billing_amount), 0)).where(
+                Transaction.transaction_date.between(pf, pt),
+                Transaction.debit_credit == "D",
             )
-            inc_q = await self.db.execute(
-                select(func.coalesce(func.sum(DailyIncome.amount), 0)).where(
-                    DailyIncome.transaction_date.between(pf, pt),
-                )
+            if user_id is not None:
+                cc_query = cc_query.where(Transaction.user_id == user_id)
+            if account_id:
+                cc_query = cc_query.where(Transaction.account_id == account_id)
+            cc_q = await self.db.execute(cc_query)
+            inc_query = select(func.coalesce(func.sum(DailyIncome.amount), 0)).where(
+                DailyIncome.transaction_date.between(pf, pt),
             )
-            cash_q = await self.db.execute(
-                select(func.coalesce(func.sum(DailyExpense.amount), 0)).where(
-                    DailyExpense.transaction_date.between(pf, pt),
-                    DailyExpense.ai_status == "processed",
-                )
+            if user_id is not None:
+                inc_query = inc_query.where(DailyIncome.user_id == user_id)
+            inc_q = await self.db.execute(inc_query)
+            cash_query = select(func.coalesce(func.sum(DailyExpense.amount), 0)).where(
+                DailyExpense.transaction_date.between(pf, pt),
+                DailyExpense.ai_status == "processed",
             )
+            if user_id is not None:
+                cash_query = cash_query.where(DailyExpense.user_id == user_id)
+            cash_q = await self.db.execute(cash_query)
             m_cc = round(float(cc_q.scalar() or 0), 2)
             m_inc = round(float(inc_q.scalar() or 0), 2)
             m_cash = round(float(cash_q.scalar() or 0), 2)
@@ -790,16 +828,17 @@ class ReportEngine:
         year: int,
         month: int,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """All spending grouped by payment method (credit card + cash methods)."""
         period_from, period_to = self._period_bounds(year, month)
 
         # Credit card counts as one method
-        cc_txns = await self._get_debit_transactions(period_from, period_to, account_id)
+        cc_txns = await self._get_debit_transactions(period_from, period_to, account_id, user_id=user_id)
         cc_total = sum(float(t.billing_amount or t.amount or 0) for t in cc_txns)
 
         # Daily expenses by payment method
-        expenses = await self._get_daily_expenses(period_from, period_to)
+        expenses = await self._get_daily_expenses(period_from, period_to, user_id=user_id)
         pm_dist: Dict[str, Dict[str, Any]] = {}
         for e in expenses:
             pm = e.payment_method or "cash"
@@ -835,29 +874,32 @@ class ReportEngine:
         year: int,
         month: int,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Daily cumulative spend vs linear budget pace."""
         period_from, period_to = self._period_bounds(year, month)
         total_days = (period_to - period_from).days + 1
 
         # Total budget
-        budget_result = await self.db.execute(
-            select(func.coalesce(func.sum(Budget.monthly_limit), 0)).where(
-                Budget.is_active == True,
-                *([Budget.account_id == account_id] if account_id else []),
-            )
+        budget_query = select(func.coalesce(func.sum(Budget.monthly_limit), 0)).where(
+            Budget.is_active == True,
         )
+        if user_id is not None:
+            budget_query = budget_query.where(Budget.user_id == user_id)
+        if account_id:
+            budget_query = budget_query.where(Budget.account_id == account_id)
+        budget_result = await self.db.execute(budget_query)
         total_budget = float(budget_result.scalar() or 0)
 
         # Daily spend (credit card)
-        cc_txns = await self._get_debit_transactions(period_from, period_to, account_id)
+        cc_txns = await self._get_debit_transactions(period_from, period_to, account_id, user_id=user_id)
         daily_cc: Dict[int, float] = {}
         for t in cc_txns:
             day = t.transaction_date.day
             daily_cc[day] = daily_cc.get(day, 0) + float(t.billing_amount or t.amount or 0)
 
         # Daily spend (cash expenses)
-        expenses = await self._get_daily_expenses(period_from, period_to)
+        expenses = await self._get_daily_expenses(period_from, period_to, user_id=user_id)
         daily_cash: Dict[int, float] = {}
         for e in expenses:
             day = e.transaction_date.day
@@ -900,18 +942,20 @@ class ReportEngine:
     async def yearly_monthly_totals(
         self,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """12-month bar chart data: [{month: 'YYYY-MM', total: N}, ...]."""
-        return await self._monthly_totals(12, account_id)
+        return await self._monthly_totals(12, account_id, user_id=user_id)
 
     async def yearly_category_breakdown(
         self,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Aggregated category distribution across the last 12 months."""
         today = date.today()
         start = today - timedelta(days=365)
-        txns = await self._get_debit_transactions(start, today, account_id)
+        txns = await self._get_debit_transactions(start, today, account_id, user_id=user_id)
         by_cat = await self._category_distribution(txns)
         total = sum(by_cat.values())
 
@@ -932,11 +976,12 @@ class ReportEngine:
     async def yearly_top_merchants(
         self,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Top 10 merchants across the last 12 months."""
         today = date.today()
         start = today - timedelta(days=365)
-        txns = await self._get_debit_transactions(start, today, account_id)
+        txns = await self._get_debit_transactions(start, today, account_id, user_id=user_id)
 
         merchant_data: Dict[str, Dict[str, Any]] = {}
         total = 0.0
@@ -979,21 +1024,23 @@ class ReportEngine:
     async def yearly_account_comparison(
         self,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Spending per account across months (for multi-card users)."""
         from app.models import Account
 
         # Get all active accounts
-        acct_result = await self.db.execute(
-            select(Account).where(Account.is_active == True).order_by(Account.id)
-        )
+        acct_query = select(Account).where(Account.is_active == True).order_by(Account.id)
+        if user_id is not None:
+            acct_query = acct_query.where(Account.user_id == user_id)
+        acct_result = await self.db.execute(acct_query)
         accounts = acct_result.scalars().all()
 
         if account_id:
             accounts = [a for a in accounts if a.id == account_id]
 
         today = date.today()
-        monthly_data = await self._monthly_totals(12, account_id)
+        monthly_data = await self._monthly_totals(12, account_id, user_id=user_id)
         months = [m["month"] for m in monthly_data]
 
         account_series = []
@@ -1010,6 +1057,8 @@ class ReportEngine:
                     Transaction.debit_credit == "D",
                     Transaction.account_id == acct.id,
                 )
+                if user_id is not None:
+                    query = query.where(Transaction.user_id == user_id)
                 result = await self.db.execute(query)
                 series.append(round(float(result.scalar() or 0), 2))
             account_series.append({
@@ -1027,17 +1076,18 @@ class ReportEngine:
     async def yearly_summary_stats(
         self,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """KPI cards: total spent, avg monthly, highest/lowest month, total txns, unique merchants."""
         today = date.today()
         start = today - timedelta(days=365)
-        txns = await self._get_debit_transactions(start, today, account_id)
+        txns = await self._get_debit_transactions(start, today, account_id, user_id=user_id)
 
         total_spent = sum(float(t.billing_amount or t.amount or 0) for t in txns)
         total_txns = len(txns)
 
         # Monthly breakdown for avg/highest/lowest
-        monthly = await self._monthly_totals(12, account_id)
+        monthly = await self._monthly_totals(12, account_id, user_id=user_id)
         totals = [m["total"] for m in monthly if m["total"] > 0]
         avg_monthly = round(sum(totals) / len(totals), 2) if totals else 0
 
@@ -1062,15 +1112,21 @@ class ReportEngine:
     # Yearly: Cash Expense Reports
     # ------------------------------------------------------------------
 
-    async def yearly_cash_expense_totals(self) -> List[Dict[str, Any]]:
+    async def yearly_cash_expense_totals(
+        self,
+        user_id: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
         """12-month daily expense totals [{month, total}, ...]."""
-        return await self._daily_expense_monthly_totals(12)
+        return await self._daily_expense_monthly_totals(12, user_id=user_id)
 
-    async def yearly_cash_expense_categories(self) -> Dict[str, Any]:
+    async def yearly_cash_expense_categories(
+        self,
+        user_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """Aggregated category breakdown across last 12 months of daily expenses."""
         today = date.today()
         start = today - timedelta(days=365)
-        expenses = await self._get_daily_expenses(start, today)
+        expenses = await self._get_daily_expenses(start, today, user_id=user_id)
         by_cat = self._daily_expense_category_distribution(expenses)
         total = sum(by_cat.values())
 
@@ -1085,15 +1141,21 @@ class ReportEngine:
     # Yearly: Income Reports
     # ------------------------------------------------------------------
 
-    async def yearly_income_totals(self) -> List[Dict[str, Any]]:
+    async def yearly_income_totals(
+        self,
+        user_id: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
         """12-month income totals [{month, total}, ...]."""
-        return await self._income_monthly_totals(12)
+        return await self._income_monthly_totals(12, user_id=user_id)
 
-    async def yearly_income_sources(self) -> Dict[str, Any]:
+    async def yearly_income_sources(
+        self,
+        user_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """Aggregated income by source_type across last 12 months."""
         today = date.today()
         start = today - timedelta(days=365)
-        entries = await self._get_daily_income(start, today)
+        entries = await self._get_daily_income(start, today, user_id=user_id)
         by_src = self._income_source_distribution(entries)
         total = sum(by_src.values())
         count = len(entries)
@@ -1116,11 +1178,12 @@ class ReportEngine:
     async def yearly_income_vs_expense(
         self,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """12-month comparison: income vs credit card vs cash, with net flow."""
-        cc_totals = await self._monthly_totals(12, account_id)
-        cash_totals = await self._daily_expense_monthly_totals(12)
-        income_totals = await self._income_monthly_totals(12)
+        cc_totals = await self._monthly_totals(12, account_id, user_id=user_id)
+        cash_totals = await self._daily_expense_monthly_totals(12, user_id=user_id)
+        income_totals = await self._income_monthly_totals(12, user_id=user_id)
 
         # Align all three series by month key
         cc_map = {m["month"]: m["total"] for m in cc_totals}
@@ -1171,23 +1234,26 @@ class ReportEngine:
     async def yearly_payment_method_mix(
         self,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """All spending by payment method over 12 months."""
         today = date.today()
         start = today - timedelta(days=365)
 
         # Credit card total
-        cc_result = await self.db.execute(
-            select(func.coalesce(func.sum(Transaction.billing_amount), 0)).where(
-                Transaction.transaction_date.between(start, today),
-                Transaction.debit_credit == "D",
-                *([Transaction.account_id == account_id] if account_id else []),
-            )
+        cc_query = select(func.coalesce(func.sum(Transaction.billing_amount), 0)).where(
+            Transaction.transaction_date.between(start, today),
+            Transaction.debit_credit == "D",
         )
+        if user_id is not None:
+            cc_query = cc_query.where(Transaction.user_id == user_id)
+        if account_id:
+            cc_query = cc_query.where(Transaction.account_id == account_id)
+        cc_result = await self.db.execute(cc_query)
         cc_total = float(cc_result.scalar() or 0)
 
         # Daily expenses by payment method
-        expenses = await self._get_daily_expenses(start, today)
+        expenses = await self._get_daily_expenses(start, today, user_id=user_id)
         pm_dist: Dict[str, float] = {}
         for e in expenses:
             pm = e.payment_method or "cash"
@@ -1211,27 +1277,30 @@ class ReportEngine:
     async def yearly_unified_kpis(
         self,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Total Income, Total Cash Expenses, Net Cash Flow, Savings Rate."""
         today = date.today()
         start = today - timedelta(days=365)
 
         # Credit card total
-        cc_result = await self.db.execute(
-            select(func.coalesce(func.sum(Transaction.billing_amount), 0)).where(
-                Transaction.transaction_date.between(start, today),
-                Transaction.debit_credit == "D",
-                *([Transaction.account_id == account_id] if account_id else []),
-            )
+        cc_query = select(func.coalesce(func.sum(Transaction.billing_amount), 0)).where(
+            Transaction.transaction_date.between(start, today),
+            Transaction.debit_credit == "D",
         )
+        if user_id is not None:
+            cc_query = cc_query.where(Transaction.user_id == user_id)
+        if account_id:
+            cc_query = cc_query.where(Transaction.account_id == account_id)
+        cc_result = await self.db.execute(cc_query)
         cc_total = float(cc_result.scalar() or 0)
 
         # Cash expenses
-        expenses = await self._get_daily_expenses(start, today)
+        expenses = await self._get_daily_expenses(start, today, user_id=user_id)
         cash_total = sum(float(e.amount or 0) for e in expenses)
 
         # Income
-        income_entries = await self._get_daily_income(start, today)
+        income_entries = await self._get_daily_income(start, today, user_id=user_id)
         income_total = sum(float(e.amount or 0) for e in income_entries)
 
         total_expenses = cc_total + cash_total
@@ -1249,23 +1318,24 @@ class ReportEngine:
     async def generate_yearly_dashboard(
         self,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Run all yearly dashboard reports and return as a single dict."""
         return {
-            "monthly_totals": await self.yearly_monthly_totals(account_id),
-            "category_breakdown": await self.yearly_category_breakdown(account_id),
-            "top_merchants": await self.yearly_top_merchants(account_id),
+            "monthly_totals": await self.yearly_monthly_totals(account_id, user_id=user_id),
+            "category_breakdown": await self.yearly_category_breakdown(account_id, user_id=user_id),
+            "top_merchants": await self.yearly_top_merchants(account_id, user_id=user_id),
             "subscription_summary": await self.yearly_subscription_summary(account_id),
-            "account_comparison": await self.yearly_account_comparison(account_id),
-            "summary_stats": await self.yearly_summary_stats(account_id),
+            "account_comparison": await self.yearly_account_comparison(account_id, user_id=user_id),
+            "summary_stats": await self.yearly_summary_stats(account_id, user_id=user_id),
             # Cash + income additions
-            "cash_expense_totals": await self.yearly_cash_expense_totals(),
-            "cash_expense_categories": await self.yearly_cash_expense_categories(),
-            "income_totals": await self.yearly_income_totals(),
-            "income_sources": await self.yearly_income_sources(),
-            "income_vs_expense": await self.yearly_income_vs_expense(account_id),
-            "payment_method_mix": await self.yearly_payment_method_mix(account_id),
-            "unified_kpis": await self.yearly_unified_kpis(account_id),
+            "cash_expense_totals": await self.yearly_cash_expense_totals(user_id=user_id),
+            "cash_expense_categories": await self.yearly_cash_expense_categories(user_id=user_id),
+            "income_totals": await self.yearly_income_totals(user_id=user_id),
+            "income_sources": await self.yearly_income_sources(user_id=user_id),
+            "income_vs_expense": await self.yearly_income_vs_expense(account_id, user_id=user_id),
+            "payment_method_mix": await self.yearly_payment_method_mix(account_id, user_id=user_id),
+            "unified_kpis": await self.yearly_unified_kpis(account_id, user_id=user_id),
         }
 
     # ------------------------------------------------------------------
@@ -1277,20 +1347,21 @@ class ReportEngine:
         year: int,
         month: int,
         account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Run all 6 reports and return as a single dict."""
         return {
-            "monthly_spending": await self.monthly_spending_breakdown(year, month, account_id),
-            "merchant_concentration": await self.merchant_concentration(year, month, account_id),
-            "subscription_waste": await self.subscription_waste(year, month, account_id),
-            "lifestyle_creep": await self.lifestyle_creep(year, month, account_id),
-            "health_score": await self.financial_health_score(year, month, account_id),
-            "no_spend_tracker": await self.no_spend_day_tracker(year, month, account_id),
+            "monthly_spending": await self.monthly_spending_breakdown(year, month, account_id, user_id=user_id),
+            "merchant_concentration": await self.merchant_concentration(year, month, account_id, user_id=user_id),
+            "subscription_waste": await self.subscription_waste(year, month, account_id, user_id=user_id),
+            "lifestyle_creep": await self.lifestyle_creep(year, month, account_id, user_id=user_id),
+            "health_score": await self.financial_health_score(year, month, account_id, user_id=user_id),
+            "no_spend_tracker": await self.no_spend_day_tracker(year, month, account_id, user_id=user_id),
             # Cash + income additions
-            "cash_expense_breakdown": await self.cash_expense_breakdown(year, month),
-            "income_summary": await self.income_summary(year, month),
-            "income_vs_expense": await self.income_vs_expense(year, month, account_id),
-            "payment_method_distribution": await self.payment_method_distribution(year, month, account_id),
-            "budget_burndown": await self.budget_burndown(year, month, account_id),
+            "cash_expense_breakdown": await self.cash_expense_breakdown(year, month, user_id=user_id),
+            "income_summary": await self.income_summary(year, month, user_id=user_id),
+            "income_vs_expense": await self.income_vs_expense(year, month, account_id, user_id=user_id),
+            "payment_method_distribution": await self.payment_method_distribution(year, month, account_id, user_id=user_id),
+            "budget_burndown": await self.budget_burndown(year, month, account_id, user_id=user_id),
             "period": {"year": year, "month": month},
         }

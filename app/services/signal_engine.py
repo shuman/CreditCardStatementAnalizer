@@ -40,7 +40,7 @@ class SignalEngine:
         self.db = db
 
     async def compute_all_signals(
-        self, year: int, month: int, account_id: Optional[int] = None
+        self, user_id: int, year: int, month: int, account_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """Compute all signals for a given month. Returns a dict."""
         last_day = calendar.monthrange(year, month)[1]
@@ -48,7 +48,7 @@ class SignalEngine:
         period_to = date(year, month, last_day)
 
         # Fetch all debit transactions for the period
-        txns = await self._get_debit_transactions(period_from, period_to, account_id)
+        txns = await self._get_debit_transactions(period_from, period_to, account_id, user_id)
         if not txns:
             return {"has_data": False, "total_transactions": 0}
 
@@ -58,29 +58,29 @@ class SignalEngine:
         cat_dist = self._category_distribution(txns, total_spend)
 
         # Credit card credit transactions (bill payments / refunds — NOT income)
-        credits = await self._get_credit_transactions(period_from, period_to, account_id)
+        credits = await self._get_credit_transactions(period_from, period_to, account_id, user_id)
         total_bill_payments = sum(float(t.billing_amount or t.amount or 0) for t in credits)
 
         # Previous month for trend calculations
         prev_date = period_from - timedelta(days=1)
         prev_txns = await self._get_debit_transactions(
-            date(prev_date.year, prev_date.month, 1), prev_date, account_id
+            date(prev_date.year, prev_date.month, 1), prev_date, account_id, user_id
         )
         prev_spend = sum(float(t.billing_amount or t.amount or 0) for t in prev_txns)
 
         # 6-month totals for lifestyle creep
-        monthly_totals = await self._monthly_totals(6, account_id, end_year=year, end_month=month)
+        monthly_totals = await self._monthly_totals(6, account_id, user_id=user_id, end_year=year, end_month=month)
 
         # Budget adherence
         budget_adherence = await self._compute_budget_adherence(
-            period_from, period_to, account_id, cat_dist
+            period_from, period_to, account_id, cat_dist, user_id
         )
 
         # Real income from user-entered DailyIncome records
-        income_signals = await self._compute_income_signals(period_from, period_to, year, month)
+        income_signals = await self._compute_income_signals(period_from, period_to, year, month, user_id)
 
         # Cash expenses from user-entered DailyExpense records
-        cash_signals = await self._compute_cash_expense_signals(period_from, period_to)
+        cash_signals = await self._compute_cash_expense_signals(period_from, period_to, user_id)
 
         # Holistic computed signals (income vs total outflow)
         income_total = income_signals.get("income_total_bdt", 0)
@@ -137,24 +137,28 @@ class SignalEngine:
     # ------------------------------------------------------------------
 
     async def _get_debit_transactions(
-        self, period_from: date, period_to: date, account_id: Optional[int] = None
+        self, period_from: date, period_to: date, account_id: Optional[int] = None, user_id: Optional[int] = None
     ) -> List[Transaction]:
         query = select(Transaction).where(
             Transaction.transaction_date.between(period_from, period_to),
             Transaction.debit_credit == "D",
         )
+        if user_id is not None:
+            query = query.where(Transaction.user_id == user_id)
         if account_id:
             query = query.where(Transaction.account_id == account_id)
         result = await self.db.execute(query)
         return result.scalars().all()
 
     async def _get_credit_transactions(
-        self, period_from: date, period_to: date, account_id: Optional[int] = None
+        self, period_from: date, period_to: date, account_id: Optional[int] = None, user_id: Optional[int] = None
     ) -> List[Transaction]:
         query = select(Transaction).where(
             Transaction.transaction_date.between(period_from, period_to),
             Transaction.debit_credit == "C",
         )
+        if user_id is not None:
+            query = query.where(Transaction.user_id == user_id)
         if account_id:
             query = query.where(Transaction.account_id == account_id)
         result = await self.db.execute(query)
@@ -162,6 +166,7 @@ class SignalEngine:
 
     async def _monthly_totals(
         self, months_back: int, account_id: Optional[int] = None,
+        user_id: Optional[int] = None,
         end_year: Optional[int] = None, end_month: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         today = date.today()
@@ -183,6 +188,8 @@ class SignalEngine:
                 Transaction.transaction_date.between(period_from, period_to),
                 Transaction.debit_credit == "D",
             )
+            if user_id is not None:
+                query = query.where(Transaction.user_id == user_id)
             if account_id:
                 query = query.where(Transaction.account_id == account_id)
             result = await self.db.execute(query)
@@ -340,11 +347,13 @@ class SignalEngine:
         period_to: date,
         account_id: Optional[int],
         cat_dist: List[Dict[str, Any]],
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Active budgets vs actual spend."""
-        result = await self.db.execute(
-            select(Budget).where(Budget.is_active == True)
-        )
+        query = select(Budget).where(Budget.is_active == True)
+        if user_id is not None:
+            query = query.where(Budget.user_id == user_id)
+        result = await self.db.execute(query)
         budgets = result.scalars().all()
         if not budgets:
             return {"has_budgets": False}
@@ -383,11 +392,14 @@ class SignalEngine:
 
     async def _compute_income_signals(
         self, period_from: date, period_to: date, year: int, month: int,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Compute income signals from user-entered DailyIncome records."""
         query = select(DailyIncome).where(
             DailyIncome.transaction_date.between(period_from, period_to),
         )
+        if user_id is not None:
+            query = query.where(DailyIncome.user_id == user_id)
         result = await self.db.execute(query)
         entries = result.scalars().all()
 
@@ -397,7 +409,7 @@ class SignalEngine:
                 "income_has_data": False,
                 "income_source_breakdown": {},
                 "income_source_count": 0,
-                "income_trend_6m": await self._income_monthly_totals(6, year, month),
+                "income_trend_6m": await self._income_monthly_totals(6, year, month, user_id),
                 "income_change_pct": 0,
                 "income_diversification_score": 0,
             }
@@ -411,7 +423,7 @@ class SignalEngine:
             by_source[src] = by_source.get(src, 0) + float(e.amount or 0)
 
         # 6-month income trend
-        income_trend = await self._income_monthly_totals(6, year, month)
+        income_trend = await self._income_monthly_totals(6, year, month, user_id)
 
         # MoM income change
         prev_total = income_trend[-2]["total"] if len(income_trend) >= 2 else 0
@@ -450,6 +462,7 @@ class SignalEngine:
 
     async def _income_monthly_totals(
         self, months_back: int, end_year: int, end_month: int,
+        user_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """6-month income totals for trend analysis."""
         results = []
@@ -462,11 +475,12 @@ class SignalEngine:
             last_day = calendar.monthrange(y, m)[1]
             pf = date(y, m, 1)
             pt = date(y, m, last_day)
-            res = await self.db.execute(
-                select(func.coalesce(func.sum(DailyIncome.amount), 0)).where(
+            query = select(func.coalesce(func.sum(DailyIncome.amount), 0)).where(
                     DailyIncome.transaction_date.between(pf, pt),
                 )
-            )
+            if user_id is not None:
+                query = query.where(DailyIncome.user_id == user_id)
+            res = await self.db.execute(query)
             total = float(res.scalar() or 0)
             results.append({"month": f"{y}-{m:02d}", "total": round(total, 2)})
         return results
@@ -476,13 +490,16 @@ class SignalEngine:
     # ------------------------------------------------------------------
 
     async def _compute_cash_expense_signals(
-        self, period_from: date, period_to: date
+        self, period_from: date, period_to: date,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Compute signals from user-entered DailyExpense (cash/mobile banking) records."""
         query = select(DailyExpense).where(
             DailyExpense.transaction_date.between(period_from, period_to),
             DailyExpense.ai_status == "processed",
         )
+        if user_id is not None:
+            query = query.where(DailyExpense.user_id == user_id)
         result = await self.db.execute(query)
         expenses = result.scalars().all()
 

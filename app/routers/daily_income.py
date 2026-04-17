@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
 from app.database import get_db
+from app.routers.auth import get_current_user
+from app.models import User
 from app.services.daily_income_service import DailyIncomeService
 
 router = APIRouter(prefix="/api/daily-income", tags=["daily-income"])
@@ -74,6 +76,7 @@ class IncomeResponse(BaseModel):
 @router.post("", response_model=IncomeResponse)
 async def create_income(
     body: IncomeCreate,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -81,6 +84,7 @@ async def create_income(
     """
     service = DailyIncomeService(db)
     income = await service.save_income(
+        user_id=current_user.id,
         amount=Decimal(str(body.amount)),
         description=body.description,
         transaction_date=body.transaction_date,
@@ -97,13 +101,15 @@ async def list_income(
     source_type: Optional[str] = Query(None, description="Filter by source type"),
     limit: int = Query(100, ge=1, le=500, description="Max results"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     List income entries with optional filters.
     """
     service = DailyIncomeService(db)
     income_entries = await service.get_income_entries(
+        user_id=current_user.id,
         date_from=date_from,
         date_to=date_to,
         source_type=source_type,
@@ -116,11 +122,12 @@ async def list_income(
 @router.get("/{income_id}", response_model=IncomeResponse)
 async def get_income(
     income_id: int,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get a single income entry by ID."""
     service = DailyIncomeService(db)
-    income = await service.get_income_by_id(income_id)
+    income = await service.get_income_by_id(income_id, user_id=current_user.id)
     if not income:
         raise HTTPException(status_code=404, detail="Income entry not found")
     return IncomeResponse.from_orm(income)
@@ -130,6 +137,7 @@ async def get_income(
 async def update_income(
     income_id: int,
     body: IncomeUpdate,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Update an income entry."""
@@ -145,7 +153,7 @@ async def update_income(
     if body.transaction_date is not None:
         update_data["transaction_date"] = body.transaction_date
 
-    income = await service.update_income(income_id, **update_data)
+    income = await service.update_income(income_id, user_id=current_user.id, **update_data)
 
     if not income:
         raise HTTPException(status_code=404, detail="Income entry not found")
@@ -156,11 +164,12 @@ async def update_income(
 @router.delete("/{income_id}")
 async def delete_income(
     income_id: int,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Delete an income entry."""
     service = DailyIncomeService(db)
-    success = await service.delete_income(income_id)
+    success = await service.delete_income(income_id, user_id=current_user.id)
 
     if not success:
         raise HTTPException(status_code=404, detail="Income entry not found")
@@ -172,6 +181,7 @@ async def delete_income(
 async def get_income_statistics(
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -179,7 +189,7 @@ async def get_income_statistics(
     Includes source type breakdown, totals.
     """
     service = DailyIncomeService(db)
-    stats = await service.get_statistics(date_from=date_from, date_to=date_to)
+    stats = await service.get_statistics(user_id=current_user.id, date_from=date_from, date_to=date_to)
     return stats
 
 
@@ -187,6 +197,7 @@ async def get_income_statistics(
 async def get_monthly_income_summary(
     year: int,
     month: int,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -196,5 +207,5 @@ async def get_monthly_income_summary(
         raise HTTPException(status_code=400, detail="Month must be between 1 and 12")
 
     service = DailyIncomeService(db)
-    summary = await service.get_monthly_summary(year, month)
+    summary = await service.get_monthly_summary(user_id=current_user.id, year=year, month=month)
     return summary

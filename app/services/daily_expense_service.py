@@ -57,6 +57,7 @@ class DailyExpenseService:
 
     async def save_draft_expense(
         self,
+        user_id: int,
         amount: Decimal,
         description: str,
         transaction_date: Optional[date] = None,
@@ -74,6 +75,7 @@ class DailyExpenseService:
             payment_method = "cash"
 
         expense = DailyExpense(
+            user_id=user_id,
             amount=amount,
             currency=currency,
             description_raw=description.strip(),
@@ -93,6 +95,7 @@ class DailyExpenseService:
 
     async def get_expenses(
         self,
+        user_id: int,
         status: Optional[str] = None,
         date_from: Optional[date] = None,
         date_to: Optional[date] = None,
@@ -104,6 +107,7 @@ class DailyExpenseService:
         Get expenses with optional filters.
 
         Args:
+            user_id: Filter by user ownership
             status: Filter by ai_status (draft, pending, processed)
             date_from: Filter by transaction_date >= date_from
             date_to: Filter by transaction_date <= date_to
@@ -111,7 +115,7 @@ class DailyExpenseService:
             limit: Maximum number of results
             offset: Offset for pagination
         """
-        query = select(DailyExpense)
+        query = select(DailyExpense).where(DailyExpense.user_id == user_id)
 
         # Build filters
         filters = []
@@ -134,16 +138,17 @@ class DailyExpenseService:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
-    async def get_expense_by_id(self, expense_id: int) -> Optional[DailyExpense]:
-        """Get a single expense by ID."""
-        result = await self.db.execute(
-            select(DailyExpense).where(DailyExpense.id == expense_id)
-        )
+    async def get_expense_by_id(self, expense_id: int, user_id: Optional[int] = None) -> Optional[DailyExpense]:
+        """Get a single expense by ID (optionally scoped to user)."""
+        query = select(DailyExpense).where(DailyExpense.id == expense_id)
+        if user_id is not None:
+            query = query.where(DailyExpense.user_id == user_id)
+        result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def delete_expense(self, expense_id: int) -> bool:
+    async def delete_expense(self, expense_id: int, user_id: int) -> bool:
         """Delete an expense."""
-        expense = await self.get_expense_by_id(expense_id)
+        expense = await self.get_expense_by_id(expense_id, user_id=user_id)
         if not expense:
             return False
 
@@ -156,7 +161,7 @@ class DailyExpenseService:
     # Batch AI Processing
     # -----------------------------------------------------------------------
 
-    async def mark_for_processing(self, expense_ids: List[int]) -> int:
+    async def mark_for_processing(self, expense_ids: List[int], user_id: int) -> int:
         """
         Mark selected expenses as 'pending' for batch processing.
         Returns count of expenses marked.
@@ -166,6 +171,7 @@ class DailyExpenseService:
                 and_(
                     DailyExpense.id.in_(expense_ids),
                     DailyExpense.ai_status == "draft",
+                    DailyExpense.user_id == user_id,
                 )
             )
         )
@@ -178,7 +184,7 @@ class DailyExpenseService:
         logger.info(f"Marked {len(expenses)} expenses as pending")
         return len(expenses)
 
-    async def batch_categorize_expenses(self, expense_ids: List[int]) -> Dict[str, Any]:
+    async def batch_categorize_expenses(self, expense_ids: List[int], user_id: int) -> Dict[str, Any]:
         """
         Batch process expenses with Claude AI.
         Sends all expenses in one API call for cost efficiency.
@@ -197,6 +203,7 @@ class DailyExpenseService:
                 and_(
                     DailyExpense.id.in_(expense_ids),
                     DailyExpense.ai_status == "pending",
+                    DailyExpense.user_id == user_id,
                 )
             )
         )
@@ -250,6 +257,7 @@ class DailyExpenseService:
 
                     # Store as category rule for future matching
                     await self._store_category_rule(
+                        user_id=user_id,
                         description=expense.description_raw,
                         category=expense.category,
                         subcategory=expense.subcategory,
@@ -393,6 +401,7 @@ Rules:
 
     async def _store_category_rule(
         self,
+        user_id: int,
         description: str,
         category: str,
         subcategory: Optional[str],
@@ -406,6 +415,7 @@ Rules:
             select(CategoryRule).where(
                 CategoryRule.normalized_merchant == normalized,
                 CategoryRule.is_active == True,
+                CategoryRule.user_id == user_id,
             )
         )
         existing = result.scalar_one_or_none()
@@ -422,6 +432,7 @@ Rules:
         else:
             # Create new rule
             rule = CategoryRule(
+                user_id=user_id,
                 merchant_pattern=description[:200],
                 normalized_merchant=normalized,
                 category=category,
@@ -443,6 +454,7 @@ Rules:
     async def apply_user_override(
         self,
         expense_id: int,
+        user_id: int,
         category: str,
         subcategory: Optional[str] = None,
         description_normalized: Optional[str] = None,
@@ -450,7 +462,7 @@ Rules:
         """
         Apply user corrections to an expense and store as high-priority rule.
         """
-        expense = await self.get_expense_by_id(expense_id)
+        expense = await self.get_expense_by_id(expense_id, user_id=user_id)
         if not expense:
             return None
 
@@ -471,6 +483,7 @@ Rules:
             select(CategoryRule).where(
                 CategoryRule.normalized_merchant == normalized,
                 CategoryRule.source == "user_override",
+                CategoryRule.user_id == user_id,
             )
         )
         rule = result.scalar_one_or_none()
@@ -484,6 +497,7 @@ Rules:
             rule.updated_at = datetime.utcnow()
         else:
             rule = CategoryRule(
+                user_id=user_id,
                 merchant_pattern=expense.description_raw[:200],
                 normalized_merchant=normalized,
                 category=category,
@@ -516,11 +530,11 @@ Rules:
         normalized = re.sub(r"[^\w\s]", "", normalized)  # Remove punctuation
         return normalized[:200]
 
-    async def get_statistics(self, date_from: Optional[date] = None, date_to: Optional[date] = None) -> Dict[str, Any]:
+    async def get_statistics(self, user_id: int, date_from: Optional[date] = None, date_to: Optional[date] = None) -> Dict[str, Any]:
         """
         Get expense statistics for a date range.
         """
-        query = select(DailyExpense)
+        query = select(DailyExpense).where(DailyExpense.user_id == user_id)
 
         filters = []
         if date_from:

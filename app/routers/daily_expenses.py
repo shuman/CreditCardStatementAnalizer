@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
 from app.database import get_db
+from app.routers.auth import get_current_user
+from app.models import User
 from app.services.daily_expense_service import DailyExpenseService
 
 router = APIRouter(prefix="/api/daily-expenses", tags=["daily-expenses"])
@@ -85,6 +87,7 @@ class ExpenseResponse(BaseModel):
 @router.post("", response_model=ExpenseResponse)
 async def create_expense(
     body: ExpenseCreate,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -93,6 +96,7 @@ async def create_expense(
     """
     service = DailyExpenseService(db)
     expense = await service.save_draft_expense(
+        user_id=current_user.id,
         amount=Decimal(str(body.amount)),
         description=body.description,
         transaction_date=body.transaction_date,
@@ -109,13 +113,15 @@ async def list_expenses(
     date_to: Optional[date] = Query(None, description="Filter by date <= date_to"),
     limit: int = Query(100, ge=1, le=500, description="Max results"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     List expenses with optional filters.
     """
     service = DailyExpenseService(db)
     expenses = await service.get_expenses(
+        user_id=current_user.id,
         status=status,
         date_from=date_from,
         date_to=date_to,
@@ -128,33 +134,36 @@ async def list_expenses(
 @router.get("/drafts", response_model=List[ExpenseResponse])
 async def get_draft_expenses(
     limit: int = Query(50, ge=1, le=200),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get all draft expenses (for batch processing selection UI).
     """
     service = DailyExpenseService(db)
-    expenses = await service.get_expenses(status="draft", limit=limit)
+    expenses = await service.get_expenses(user_id=current_user.id, status="draft", limit=limit)
     return [ExpenseResponse.from_orm(e) for e in expenses]
 
 
 @router.get("/processed", response_model=List[ExpenseResponse])
 async def get_processed_expenses(
     limit: int = Query(50, ge=1, le=200),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get processed expenses awaiting user review.
     Only returns expenses with needs_review=True.
     """
     service = DailyExpenseService(db)
-    expenses = await service.get_expenses(status="processed", needs_review=True, limit=limit)
+    expenses = await service.get_expenses(user_id=current_user.id, status="processed", needs_review=True, limit=limit)
     return [ExpenseResponse.from_orm(e) for e in expenses]
 
 
 @router.post("/batch-process")
 async def batch_process_expenses(
     body: BatchProcessRequest,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -172,7 +181,7 @@ async def batch_process_expenses(
     service = DailyExpenseService(db)
 
     # Mark for processing
-    marked_count = await service.mark_for_processing(body.expense_ids)
+    marked_count = await service.mark_for_processing(body.expense_ids, user_id=current_user.id)
 
     if marked_count == 0:
         raise HTTPException(
@@ -181,7 +190,7 @@ async def batch_process_expenses(
         )
 
     # Batch categorize with AI
-    result = await service.batch_categorize_expenses(body.expense_ids)
+    result = await service.batch_categorize_expenses(body.expense_ids, user_id=current_user.id)
 
     return {
         "success": True,
@@ -196,11 +205,12 @@ async def batch_process_expenses(
 @router.get("/{expense_id}", response_model=ExpenseResponse)
 async def get_expense(
     expense_id: int,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get a single expense by ID."""
     service = DailyExpenseService(db)
-    expense = await service.get_expense_by_id(expense_id)
+    expense = await service.get_expense_by_id(expense_id, user_id=current_user.id)
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
     return ExpenseResponse.from_orm(expense)
@@ -210,6 +220,7 @@ async def get_expense(
 async def update_expense(
     expense_id: int,
     body: ExpenseUpdate,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -220,6 +231,7 @@ async def update_expense(
 
     expense = await service.apply_user_override(
         expense_id=expense_id,
+        user_id=current_user.id,
         category=body.category,
         subcategory=body.subcategory,
         description_normalized=body.description_normalized,
@@ -234,11 +246,12 @@ async def update_expense(
 @router.delete("/{expense_id}")
 async def delete_expense(
     expense_id: int,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Delete an expense."""
     service = DailyExpenseService(db)
-    success = await service.delete_expense(expense_id)
+    success = await service.delete_expense(expense_id, user_id=current_user.id)
 
     if not success:
         raise HTTPException(status_code=404, detail="Expense not found")
@@ -250,6 +263,7 @@ async def delete_expense(
 async def get_expense_statistics(
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -257,7 +271,7 @@ async def get_expense_statistics(
     Includes category breakdown, payment method breakdown, totals.
     """
     service = DailyExpenseService(db)
-    stats = await service.get_statistics(date_from=date_from, date_to=date_to)
+    stats = await service.get_statistics(user_id=current_user.id, date_from=date_from, date_to=date_to)
     return stats
 
 

@@ -11,7 +11,8 @@ from datetime import datetime
 from decimal import Decimal
 
 from app.database import get_db
-from app.models import FinancialInstitution, Account, Statement, Transaction
+from app.models import FinancialInstitution, Account, Statement, Transaction, User
+from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/api", tags=["accounts"])
 
@@ -95,10 +96,15 @@ class AccountResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.get("/institutions", response_model=List[InstitutionResponse])
-async def list_institutions(db: AsyncSession = Depends(get_db)):
+async def list_institutions(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """List all registered financial institutions."""
     result = await db.execute(
-        select(FinancialInstitution).order_by(FinancialInstitution.name)
+        select(FinancialInstitution)
+        .where(FinancialInstitution.user_id == current_user.id)
+        .order_by(FinancialInstitution.name)
     )
     return result.scalars().all()
 
@@ -111,9 +117,10 @@ async def list_institutions(db: AsyncSession = Depends(get_db)):
 async def list_accounts(
     active_only: bool = True,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """List all registered accounts/cards."""
-    query = select(Account)
+    query = select(Account).where(Account.user_id == current_user.id)
     if active_only:
         query = query.where(Account.is_active == True)
     query = query.order_by(Account.card_tier, Account.cardholder_name)
@@ -125,6 +132,7 @@ async def list_accounts(
 async def create_account(
     body: AccountCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Register a new card or account."""
     # Generate hash from full account number if provided, else from masked
@@ -133,12 +141,16 @@ async def create_account(
 
     # Check for duplicate
     existing = await db.execute(
-        select(Account).where(Account.account_number_hash == account_hash)
+        select(Account).where(
+            Account.account_number_hash == account_hash,
+            Account.user_id == current_user.id,
+        )
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Account already registered")
 
     account = Account(
+        user_id=current_user.id,
         institution_id=body.institution_id,
         account_type=body.account_type,
         account_number_masked=body.account_number_masked,
@@ -169,9 +181,12 @@ async def update_account(
     account_id: int,
     body: AccountUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Update account details (nickname, limits, rewards info, etc.)."""
-    result = await db.execute(select(Account).where(Account.id == account_id))
+    result = await db.execute(
+        select(Account).where(Account.id == account_id, Account.user_id == current_user.id)
+    )
     account = result.scalar_one_or_none()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
@@ -190,26 +205,34 @@ async def update_account(
 async def get_account_summary(
     account_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get spending, rewards, and statement summary across all statements
     linked to this account.
     """
-    result = await db.execute(select(Account).where(Account.id == account_id))
+    result = await db.execute(
+        select(Account).where(Account.id == account_id, Account.user_id == current_user.id)
+    )
     account = result.scalar_one_or_none()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
     # Count statements
     stmt_result = await db.execute(
-        select(func.count(Statement.id)).where(Statement.account_id == account_id)
+        select(func.count(Statement.id))
+        .where(Statement.account_id == account_id, Statement.user_id == current_user.id)
     )
     statement_count = stmt_result.scalar() or 0
 
     # Sum total transactions
     txn_result = await db.execute(
         select(func.count(Transaction.id), func.sum(Transaction.amount))
-        .where(Transaction.account_id == account_id, Transaction.debit_credit == "D")
+        .where(
+            Transaction.account_id == account_id,
+            Transaction.debit_credit == "D",
+            Transaction.user_id == current_user.id,
+        )
     )
     txn_row = txn_result.one()
     txn_count = txn_row[0] or 0
@@ -218,7 +241,7 @@ async def get_account_summary(
     # Latest statement
     latest_stmt = await db.execute(
         select(Statement)
-        .where(Statement.account_id == account_id)
+        .where(Statement.account_id == account_id, Statement.user_id == current_user.id)
         .order_by(Statement.statement_date.desc())
         .limit(1)
     )
@@ -226,7 +249,10 @@ async def get_account_summary(
 
     # Supplement cards
     supp_result = await db.execute(
-        select(Account).where(Account.parent_account_id == account_id)
+        select(Account).where(
+            Account.parent_account_id == account_id,
+            Account.user_id == current_user.id,
+        )
     )
     supplement_cards = supp_result.scalars().all()
 

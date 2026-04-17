@@ -11,8 +11,9 @@ from datetime import date
 from collections import defaultdict
 
 from app.database import get_db
-from app.models import Budget, Transaction
+from app.models import Budget, Transaction, User
 from app.config import settings
+from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/api/budgets", tags=["budgets"])
 
@@ -47,16 +48,25 @@ class BudgetResponse(BaseModel):
 
 
 @router.get("", response_model=List[BudgetResponse])
-async def list_budgets(db: AsyncSession = Depends(get_db)):
+async def list_budgets(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """List all active budgets."""
     result = await db.execute(
-        select(Budget).where(Budget.is_active == True).order_by(Budget.category)
+        select(Budget)
+        .where(Budget.is_active == True, Budget.user_id == current_user.id)
+        .order_by(Budget.category)
     )
     return result.scalars().all()
 
 
 @router.post("", response_model=BudgetResponse)
-async def create_budget(body: BudgetCreate, db: AsyncSession = Depends(get_db)):
+async def create_budget(
+    body: BudgetCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Create a new monthly budget for a category."""
     # Check for existing budget for same category + account
     existing = await db.execute(
@@ -64,6 +74,7 @@ async def create_budget(body: BudgetCreate, db: AsyncSession = Depends(get_db)):
             Budget.category == body.category,
             Budget.account_id == body.account_id,
             Budget.is_active == True,
+            Budget.user_id == current_user.id,
         )
     )
     if existing.scalar_one_or_none():
@@ -79,6 +90,7 @@ async def create_budget(body: BudgetCreate, db: AsyncSession = Depends(get_db)):
         currency=body.currency,
         alert_at_pct=body.alert_at_pct,
         account_id=body.account_id,
+        user_id=current_user.id,
         is_active=True,
     )
     db.add(budget)
@@ -89,10 +101,15 @@ async def create_budget(body: BudgetCreate, db: AsyncSession = Depends(get_db)):
 
 @router.put("/{budget_id}", response_model=BudgetResponse)
 async def update_budget(
-    budget_id: int, body: BudgetUpdate, db: AsyncSession = Depends(get_db)
+    budget_id: int,
+    body: BudgetUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Update a budget."""
-    result = await db.execute(select(Budget).where(Budget.id == budget_id))
+    result = await db.execute(
+        select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id)
+    )
     budget = result.scalar_one_or_none()
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
@@ -108,9 +125,15 @@ async def update_budget(
 
 
 @router.delete("/{budget_id}")
-async def delete_budget(budget_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_budget(
+    budget_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Deactivate a budget."""
-    result = await db.execute(select(Budget).where(Budget.id == budget_id))
+    result = await db.execute(
+        select(Budget).where(Budget.id == budget_id, Budget.user_id == current_user.id)
+    )
     budget = result.scalar_one_or_none()
     if not budget:
         raise HTTPException(status_code=404, detail="Budget not found")
@@ -124,6 +147,7 @@ async def get_budget_status(
     year: Optional[int] = None,
     month: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get current month's spending vs budget for each category.
@@ -140,7 +164,9 @@ async def get_budget_status(
         period_to = date(year, month + 1, 1)
 
     # Get all active budgets
-    result = await db.execute(select(Budget).where(Budget.is_active == True))
+    result = await db.execute(
+        select(Budget).where(Budget.is_active == True, Budget.user_id == current_user.id)
+    )
     budgets = result.scalars().all()
 
     # Get current spending by category
@@ -149,6 +175,7 @@ async def get_budget_status(
             Transaction.transaction_date >= period_from,
             Transaction.transaction_date < period_to,
             Transaction.debit_credit == "D",
+            Transaction.user_id == current_user.id,
         )
     )
     txns = txn_result.scalars().all()

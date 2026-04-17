@@ -175,6 +175,7 @@ class CategoryEngine:
         merchant_name: Optional[str],
         description_raw: str,
         country: str = "BD",
+        user_id: Optional[int] = None,
     ) -> Tuple[str, Optional[str], str, float]:
         """
         Categorize a transaction.
@@ -186,7 +187,7 @@ class CategoryEngine:
         normalized = self._normalize(merchant_name or description_raw)
 
         # Step 1: Check rules table
-        rule = await self._lookup_rule(normalized)
+        rule = await self._lookup_rule(normalized, user_id)
         if rule:
             # Update hit stats (fire and forget)
             rule.match_count += 1
@@ -202,6 +203,7 @@ class CategoryEngine:
                 )
                 # Store as a new rule for future use
                 await self._store_rule(
+                    user_id=user_id,
                     merchant_pattern=merchant_name or description_raw,
                     normalized=normalized,
                     category=category,
@@ -223,14 +225,16 @@ class CategoryEngine:
         transaction_id: int,
         new_category: str,
         new_subcategory: Optional[str] = None,
+        user_id: Optional[int] = None,
     ) -> bool:
         """
         Apply a user category override to a transaction and persist a rule.
         Future transactions from the same merchant will auto-match.
         """
-        result = await self.db.execute(
-            select(Transaction).where(Transaction.id == transaction_id)
-        )
+        query = select(Transaction).where(Transaction.id == transaction_id)
+        if user_id is not None:
+            query = query.where(Transaction.user_id == user_id)
+        result = await self.db.execute(query)
         transaction = result.scalar_one_or_none()
         if not transaction:
             return False
@@ -247,6 +251,7 @@ class CategoryEngine:
         normalized = self._normalize(merchant)
 
         await self._upsert_user_override_rule(
+            user_id=user_id,
             merchant_pattern=merchant,
             normalized=normalized,
             category=new_category,
@@ -256,34 +261,35 @@ class CategoryEngine:
         await self.db.commit()
         return True
 
-    async def _lookup_rule(self, normalized: str) -> Optional[CategoryRule]:
+    async def _lookup_rule(self, normalized: str, user_id: Optional[int] = None) -> Optional[CategoryRule]:
         """Look up category_rules by normalized merchant with smart matching."""
         # Try exact match first (fastest)
-        result = await self.db.execute(
-            select(CategoryRule)
-            .where(
+        query = select(CategoryRule)
+        if user_id is not None:
+            query = query.where(CategoryRule.user_id == user_id)
+        query = query.where(
                 CategoryRule.normalized_merchant == normalized,
                 CategoryRule.is_active == True,
-            )
-            .order_by(
+            ).order_by(
                 # user_override > claude_ai > builtin
                 CategoryRule.source.desc(),
                 CategoryRule.confidence.desc(),
                 CategoryRule.match_count.desc(),
-            )
-            .limit(1)
-        )
+            ).limit(1)
+        result = await self.db.execute(query)
         rule = result.scalar_one_or_none()
         if rule:
             return rule
 
         # Try prefix match (e.g., "github" matches "github inc san")
         # Use SQL LIKE query for efficiency
-        result = await self.db.execute(
-            select(CategoryRule)
-            .where(
+        query = select(CategoryRule).where(
                 CategoryRule.is_active == True,
             )
+        if user_id is not None:
+            query = query.where(CategoryRule.user_id == user_id)
+        result = await self.db.execute(
+            query
             .order_by(
                 # Prioritize: user_override > claude_ai > builtin, then by specificity
                 CategoryRule.source.desc(),
@@ -317,6 +323,7 @@ class CategoryEngine:
     async def batch_categorize(
         self,
         transactions: list[Dict[str, Any]],
+        user_id: Optional[int] = None,
     ) -> list[Dict[str, Any]]:
         """
         Two-pass categorization:
@@ -333,7 +340,7 @@ class CategoryEngine:
 
             merchant = txn.get("merchant_name") or txn.get("description_raw", "")
             normalized = self._normalize(merchant)
-            rule = await self._lookup_rule(normalized)
+            rule = await self._lookup_rule(normalized, user_id)
 
             if rule:
                 rule.match_count += 1
@@ -402,6 +409,7 @@ class CategoryEngine:
                     merchant = txn.get("merchant_name") or txn.get("description_raw", "")
                     normalized = self._normalize(merchant)
                     await self._store_rule(
+                        user_id=user_id,
                         merchant_pattern=merchant,
                         normalized=normalized,
                         category=cat,
@@ -614,18 +622,21 @@ Rules:
         subcategory: Optional[str],
         source: str,
         confidence: float,
+        user_id: Optional[int] = None,
     ):
         """Store a new category rule (unless one already exists for this merchant)."""
         # Check for ANY existing rule for this merchant (regardless of source)
-        existing = await self.db.execute(
-            select(CategoryRule).where(
+        query = select(CategoryRule).where(
                 CategoryRule.normalized_merchant == normalized,
                 CategoryRule.is_active == True,
-            ).order_by(
+            )
+        if user_id is not None:
+            query = query.where(CategoryRule.user_id == user_id)
+        query = query.order_by(
                 # Prefer keeping user_override rules, update others
                 CategoryRule.source.desc(),
             ).limit(1)
-        )
+        existing = await self.db.execute(query)
         rule = existing.scalar_one_or_none()
 
         if rule:
@@ -640,6 +651,7 @@ Rules:
             rule.updated_at = datetime.utcnow()
         else:
             rule = CategoryRule(
+                user_id=user_id,
                 merchant_pattern=merchant_pattern[:200],
                 normalized_merchant=normalized[:200],
                 category=category,
@@ -659,14 +671,16 @@ Rules:
         normalized: str,
         category: str,
         subcategory: Optional[str],
+        user_id: Optional[int] = None,
     ):
         """Upsert a user override rule (always wins, confidence=1.0)."""
-        existing = await self.db.execute(
-            select(CategoryRule).where(
+        query = select(CategoryRule).where(
                 CategoryRule.normalized_merchant == normalized,
                 CategoryRule.source == "user_override",
             )
-        )
+        if user_id is not None:
+            query = query.where(CategoryRule.user_id == user_id)
+        existing = await self.db.execute(query)
         rule = existing.scalar_one_or_none()
 
         if rule:
@@ -676,6 +690,7 @@ Rules:
             rule.updated_at = datetime.utcnow()
         else:
             rule = CategoryRule(
+                user_id=user_id,
                 merchant_pattern=merchant_pattern[:200],
                 normalized_merchant=normalized[:200],
                 category=category,
@@ -731,7 +746,7 @@ Rules:
 # Seeding
 # ---------------------------------------------------------------------------
 
-async def seed_category_rules(db: AsyncSession):
+async def seed_category_rules(db: AsyncSession, user_id: Optional[int] = None):
     """
     Seed the category_rules table with Bangladesh-relevant merchant rules.
     Called once on startup (idempotent — skips existing entries).
@@ -753,6 +768,7 @@ async def seed_category_rules(db: AsyncSession):
             continue  # Already seeded
 
         rule = CategoryRule(
+            user_id=user_id,
             merchant_pattern=merchant,
             normalized_merchant=normalized,
             category=category,

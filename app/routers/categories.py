@@ -10,8 +10,9 @@ from pydantic import BaseModel
 from datetime import datetime
 
 from app.database import get_db
-from app.models import CategoryRule, Transaction
+from app.models import CategoryRule, Transaction, User
 from app.services.category_engine import CategoryEngine, seed_category_rules
+from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/api/categories", tags=["categories"])
 
@@ -52,9 +53,10 @@ async def list_category_rules(
     active_only: bool = Query(True),
     limit: int = Query(200, le=500),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """List all learned category rules."""
-    query = select(CategoryRule)
+    query = select(CategoryRule).where(CategoryRule.user_id == current_user.id)
     if active_only:
         query = query.where(CategoryRule.is_active == True)
     if source:
@@ -68,18 +70,32 @@ async def list_category_rules(
 
 
 @router.post("/rules/seed")
-async def seed_rules(db: AsyncSession = Depends(get_db)):
+async def seed_rules(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Seed the category_rules table with Bangladesh-relevant built-in rules."""
-    await seed_category_rules(db)
-    result = await db.execute(select(CategoryRule))
+    await seed_category_rules(db, user_id=current_user.id)
+    result = await db.execute(
+        select(CategoryRule).where(CategoryRule.user_id == current_user.id)
+    )
     count = len(result.scalars().all())
     return {"success": True, "message": f"Rules seeded. Total rules: {count}"}
 
 
 @router.delete("/rules/{rule_id}")
-async def deactivate_rule(rule_id: int, db: AsyncSession = Depends(get_db)):
+async def deactivate_rule(
+    rule_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Deactivate a category rule (soft delete)."""
-    result = await db.execute(select(CategoryRule).where(CategoryRule.id == rule_id))
+    result = await db.execute(
+        select(CategoryRule).where(
+            CategoryRule.id == rule_id,
+            CategoryRule.user_id == current_user.id,
+        )
+    )
     rule = result.scalar_one_or_none()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
@@ -93,9 +109,15 @@ async def update_rule(
     rule_id: int,
     body: CategoryRuleUpdateRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Update fields on an existing category rule."""
-    result = await db.execute(select(CategoryRule).where(CategoryRule.id == rule_id))
+    result = await db.execute(
+        select(CategoryRule).where(
+            CategoryRule.id == rule_id,
+            CategoryRule.user_id == current_user.id,
+        )
+    )
     rule = result.scalar_one_or_none()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
@@ -122,6 +144,7 @@ async def override_transaction_category(
     transaction_id: int,
     body: CategoryOverrideRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Override a transaction's category.
@@ -133,6 +156,7 @@ async def override_transaction_category(
         transaction_id=transaction_id,
         new_category=body.category,
         new_subcategory=body.subcategory,
+        user_id=current_user.id,
     )
     if not success:
         raise HTTPException(status_code=404, detail="Transaction not found")
@@ -152,6 +176,7 @@ async def predict_category(
     description: str = Query(...),
     country: str = Query("BD"),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Predict the category for a given merchant/description."""
     engine = CategoryEngine(db)

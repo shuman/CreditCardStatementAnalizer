@@ -290,7 +290,7 @@ async def save_statement(
     """
     try:
         service = StatementService(db)
-        result = await service.save_previewed_data(data)
+        result = await service.save_previewed_data(data, user_id=current_user.id)
 
         # Clean up temp file — validate path is within allowed temp directory
         _allowed_temp = os.path.realpath(os.path.join(settings.upload_dir, "temp"))

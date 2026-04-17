@@ -10,6 +10,8 @@ from pydantic import BaseModel
 
 from app.database import get_db
 from app.models import Insight, AdvisorReport
+from app.models import User
+from app.routers.auth import get_current_user
 from app.services.advisor import AdvisorService
 
 router = APIRouter(prefix="/api/advisor", tags=["advisor"])
@@ -38,6 +40,7 @@ async def analyze_period(
     period_to: Optional[date] = Query(None, description="End date (defaults to last of last month)"),
     account_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Trigger AI analysis for a date range.
@@ -58,6 +61,7 @@ async def analyze_period(
         period_from=period_from,
         period_to=period_to,
         account_id=account_id,
+        user_id=current_user.id,
     )
 
     return {
@@ -75,11 +79,12 @@ async def get_insights(
     priority: Optional[int] = Query(None, ge=1, le=3),
     limit: int = Query(50, le=200),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     List AI-generated insights. Filter by type, priority, or read status.
     """
-    query = select(Insight).order_by(Insight.priority.asc(), desc(Insight.created_at))
+    query = select(Insight).where(Insight.user_id == current_user.id).order_by(Insight.priority.asc(), desc(Insight.created_at))
 
     if unread_only:
         query = query.where(Insight.is_read == False)
@@ -97,9 +102,10 @@ async def get_insights(
 async def mark_insight_read(
     insight_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Mark an insight as read."""
-    result = await db.execute(select(Insight).where(Insight.id == insight_id))
+    result = await db.execute(select(Insight).where(Insight.id == insight_id, Insight.user_id == current_user.id))
     insight = result.scalar_one_or_none()
     if not insight:
         raise HTTPException(status_code=404, detail="Insight not found")
@@ -114,6 +120,7 @@ async def get_monthly_report(
     month: int,
     account_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get the monthly report for a specific year/month.
@@ -130,6 +137,7 @@ async def get_monthly_report(
     query = select(Insight).where(
         Insight.insight_type == "monthly_report",
         Insight.period_from == period_from,
+        Insight.user_id == current_user.id,
     )
     if account_id:
         query = query.where(Insight.account_id == account_id)
@@ -168,16 +176,16 @@ async def get_monthly_report(
 
 
 @router.get("/unread-count")
-async def get_unread_count(db: AsyncSession = Depends(get_db)):
+async def get_unread_count(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get count of unread insights (for badge in navigation)."""
     from sqlalchemy import func
     result = await db.execute(
-        select(func.count(Insight.id)).where(Insight.is_read == False)
+        select(func.count(Insight.id)).where(Insight.is_read == False, Insight.user_id == current_user.id)
     )
     count = result.scalar() or 0
     critical = await db.execute(
         select(func.count(Insight.id)).where(
-            Insight.is_read == False, Insight.priority == 1
+            Insight.is_read == False, Insight.priority == 1, Insight.user_id == current_user.id
         )
     )
     return {
@@ -196,6 +204,7 @@ async def get_advisor_report(
     month: int,
     account_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Return a cached advisor report for the given month.
@@ -205,6 +214,7 @@ async def get_advisor_report(
     query = select(AdvisorReport).where(
         AdvisorReport.year == year,
         AdvisorReport.month == month,
+        AdvisorReport.user_id == current_user.id,
     )
     if account_id:
         query = query.where(AdvisorReport.account_id == account_id)
@@ -226,9 +236,10 @@ async def get_advisor_report(
 async def get_latest_report(
     account_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get the most recent cached advisor report."""
-    query = select(AdvisorReport).order_by(
+    query = select(AdvisorReport).where(AdvisorReport.user_id == current_user.id).order_by(
         desc(AdvisorReport.year), desc(AdvisorReport.month)
     )
     if account_id:
@@ -246,10 +257,12 @@ async def get_latest_report(
 async def list_reports(
     limit: int = Query(12, le=24),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """List all cached advisor reports (history)."""
     result = await db.execute(
         select(AdvisorReport)
+        .where(AdvisorReport.user_id == current_user.id)
         .order_by(desc(AdvisorReport.year), desc(AdvisorReport.month))
         .limit(limit)
     )
@@ -266,6 +279,7 @@ async def force_generate_report(
     month: int,
     account_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Generate (or re-generate) an advisor report for the given month."""
     from app.config import settings
@@ -282,7 +296,7 @@ async def force_generate_report(
     month_names = ["January","February","March","April","May","June",
                    "July","August","September","October","November","December"]
     sig_engine = SignalEngine(db)
-    signals = await sig_engine.compute_all_signals(year, month, account_id)
+    signals = await sig_engine.compute_all_signals(year, month, account_id, user_id=current_user.id)
     if not signals.get("has_data"):
         raise HTTPException(
             status_code=404,
@@ -294,7 +308,7 @@ async def force_generate_report(
 
     advisor = AdvisorService(db)
     report = await advisor.generate_advisor_report(
-        year, month, account_id, force_regenerate=True
+        year, month, account_id, force_regenerate=True, user_id=current_user.id
     )
 
     if not report:

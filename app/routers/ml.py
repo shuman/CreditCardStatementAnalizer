@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database import get_db
-from app.models import Transaction
+from app.models import Transaction, User
+from app.routers.auth import get_current_user
 from app.ml.categorizer import get_categorizer
 
 router = APIRouter(prefix="/api/ml", tags=["machine-learning"])
@@ -14,7 +15,8 @@ router = APIRouter(prefix="/api/ml", tags=["machine-learning"])
 
 @router.post("/train")
 async def train_model(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Train the ML model using all transactions with categories.
@@ -29,9 +31,12 @@ async def train_model(
     - Manually correcting categories
     - Periodically to improve accuracy
     """
-    # Get all transactions with categories
+    # Get all transactions with categories for this user
     result = await db.execute(
-        select(Transaction).where(Transaction.merchant_category.isnot(None))
+        select(Transaction).where(
+            Transaction.merchant_category.isnot(None),
+            Transaction.user_id == current_user.id
+        )
     )
     transactions = result.scalars().all()
 
@@ -70,7 +75,9 @@ async def train_model(
 
 
 @router.get("/stats")
-async def get_model_stats():
+async def get_model_stats(
+    current_user: User = Depends(get_current_user)
+):
     """
     Get ML model statistics and performance metrics.
 
@@ -97,7 +104,8 @@ async def get_model_stats():
 @router.post("/predict")
 async def predict_category(
     description: str,
-    merchant_name: str = None
+    merchant_name: str = None,
+    current_user: User = Depends(get_current_user)
 ):
     """
     Predict category for a transaction description.
@@ -140,7 +148,8 @@ async def update_transaction_category(
     transaction_id: int,
     category: str,
     retrain: bool = True,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Update a transaction's category manually.
@@ -153,9 +162,12 @@ async def update_transaction_category(
         category: New category
         retrain: Whether to retrain model after update (default: True)
     """
-    # Get transaction
+    # Get transaction (scoped to current user)
     result = await db.execute(
-        select(Transaction).where(Transaction.id == transaction_id)
+        select(Transaction).where(
+            Transaction.id == transaction_id,
+            Transaction.user_id == current_user.id
+        )
     )
     transaction = result.scalar_one_or_none()
 
@@ -178,7 +190,10 @@ async def update_transaction_category(
     # Optionally retrain model
     if retrain:
         result = await db.execute(
-            select(Transaction).where(Transaction.merchant_category.isnot(None))
+            select(Transaction).where(
+                Transaction.merchant_category.isnot(None),
+                Transaction.user_id == current_user.id
+            )
         )
         all_transactions = result.scalars().all()
 

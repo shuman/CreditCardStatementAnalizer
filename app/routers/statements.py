@@ -115,7 +115,8 @@ async def list_statements(
 @router.get("/statements/{statement_id}")
 async def get_statement(
     statement_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get detailed information about a specific statement.
@@ -128,7 +129,7 @@ async def get_statement(
     from app.models import Transaction
 
     service = StatementService(db)
-    statement = await service.get_statement(statement_id)
+    statement = await service.get_statement(statement_id, user_id=current_user.id)
 
     if not statement:
         raise HTTPException(status_code=404, detail="Statement not found")
@@ -174,7 +175,8 @@ async def get_transactions(
     merchant: Optional[str] = Query(None, description="Filter by merchant name"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get transactions for a statement with optional filters.
@@ -190,12 +192,13 @@ async def get_transactions(
     service = StatementService(db)
 
     # Check if statement exists
-    statement = await service.get_statement(statement_id)
+    statement = await service.get_statement(statement_id, user_id=current_user.id)
     if not statement:
         raise HTTPException(status_code=404, detail="Statement not found")
 
     transactions = await service.get_transactions(
         statement_id=statement_id,
+        user_id=current_user.id,
         category=category,
         merchant=merchant,
         limit=limit,
@@ -208,7 +211,8 @@ async def get_transactions(
 @router.get("/statements/{statement_id}/analytics")
 async def get_statement_analytics(
     statement_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get analytics for a statement.
@@ -218,7 +222,7 @@ async def get_statement_analytics(
     Returns category breakdown, spending trends, and summary statistics.
     """
     service = StatementService(db)
-    analytics = await service.get_analytics(statement_id)
+    analytics = await service.get_analytics(statement_id, user_id=current_user.id)
 
     if not analytics:
         raise HTTPException(status_code=404, detail="Statement not found")
@@ -251,7 +255,8 @@ async def get_statement_analytics(
 @router.get("/statements/{statement_id}/export/csv")
 async def export_transactions_csv(
     statement_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Export statement transactions to CSV file.
@@ -263,12 +268,12 @@ async def export_transactions_csv(
     service = StatementService(db)
 
     # Get statement
-    statement = await service.get_statement(statement_id)
+    statement = await service.get_statement(statement_id, user_id=current_user.id)
     if not statement:
         raise HTTPException(status_code=404, detail="Statement not found")
 
     # Get all transactions
-    transactions = await service.get_transactions(statement_id, limit=10000)
+    transactions = await service.get_transactions(statement_id, user_id=current_user.id, limit=10000)
 
     # Create CSV in memory
     output = io.StringIO()
@@ -319,7 +324,8 @@ async def export_transactions_csv(
 
 @router.get("/analytics/dashboard")
 async def get_dashboard_analytics(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Get dashboard analytics across all statements.
@@ -329,7 +335,7 @@ async def get_dashboard_analytics(
     service = StatementService(db)
 
     # Get all statements
-    statements = await service.get_all_statements(limit=12)  # Last 12 statements
+    statements = await service.get_all_statements(user_id=current_user.id, limit=12)  # Last 12 statements
 
     if not statements:
         return {
@@ -370,7 +376,8 @@ async def get_dashboard_analytics(
 @router.delete("/statements/{statement_id}")
 async def delete_statement(
     statement_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Delete a specific statement and all its related data.
@@ -385,7 +392,7 @@ async def delete_statement(
     import os
 
     service = StatementService(db)
-    statement = await service.get_statement(statement_id)
+    statement = await service.get_statement(statement_id, user_id=current_user.id)
 
     if not statement:
         raise HTTPException(status_code=404, detail="Statement not found")
@@ -411,7 +418,8 @@ async def delete_statement(
 @router.post("/database/reset")
 async def reset_database(
     confirm: str = Query(..., description="Type 'RESET' to confirm"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     **DANGER**: Reset entire database - deletes ALL statements and data.
@@ -423,6 +431,9 @@ async def reset_database(
     - Remove all uploaded PDF files
     - Cannot be undone!
     """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required for database reset")
+
     if confirm != "RESET":
         raise HTTPException(
             status_code=400,
@@ -485,7 +496,8 @@ async def search_transactions(
     description: Optional[str] = Query(None, description="Search in description (partial match)"),
     amount: Optional[float] = Query(None, description="Filter by exact amount"),
     category: Optional[str] = Query(None, description="Filter by category"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Search transactions across all statements.
@@ -512,7 +524,7 @@ async def search_transactions(
         Transaction.transaction_type,
         Transaction.statement_id,
         Statement.filename.label('statement_filename')
-    ).join(Statement, Transaction.statement_id == Statement.id)
+    ).join(Statement, Transaction.statement_id == Statement.id).where(Transaction.user_id == current_user.id)
 
     # Apply filters
     conditions = []
@@ -567,7 +579,8 @@ async def export_transactions_csv(
     description: Optional[str] = Query(None),
     amount: Optional[float] = Query(None),
     category: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """Export search results to CSV."""
     from sqlalchemy import select, and_
@@ -582,7 +595,7 @@ async def export_transactions_csv(
         Transaction.amount,
         Transaction.debit_credit,
         Statement.filename
-    ).join(Statement, Transaction.statement_id == Statement.id)
+    ).join(Statement, Transaction.statement_id == Statement.id).where(Transaction.user_id == current_user.id)
 
     conditions = []
     if date:

@@ -166,7 +166,7 @@ class StatementService:
                 os.remove(file_path)
             raise ValueError(f"Error processing statement: {str(e)}")
 
-    async def save_previewed_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def save_previewed_data(self, data: Dict[str, Any], user_id: int) -> Dict[str, Any]:
         """
         Save previewed and edited statement data to database.
         Expects the edited data from the preview endpoint.
@@ -184,9 +184,9 @@ class StatementService:
 
         # Re-upload support: soft-delete old statement first, permanently
         # delete only after the new data has been committed successfully.
-        existing = await self._check_duplicate_hash(file_hash)
+        existing = await self._check_duplicate_hash(file_hash, user_id)
         if not existing:
-            existing = await self._check_duplicate_filename(filename)
+            existing = await self._check_duplicate_filename(filename, user_id)
 
         old_statement_id = None
         if existing:
@@ -262,6 +262,7 @@ class StatementService:
             card_type=card_type,
             account_id=account_id,
             extraction_method=data.get("extraction_method", "regex_fallback"),
+            user_id=user_id,
             **safe_meta,
         )
         self.db.add(statement)
@@ -293,6 +294,7 @@ class StatementService:
                 statement_id=statement.id,
                 account_number=txn_account_number,
                 account_id=txn_account_id,
+                user_id=user_id,
                 **txn_fields,
             )
             self.db.add(transaction)
@@ -326,6 +328,7 @@ class StatementService:
                 card_type=card_type,
                 account_id=account_id,
                 extraction_method=data.get("extraction_method", "regex_fallback"),
+                user_id=user_id,
                 **safe_meta,
             )
             self.db.add(statement)
@@ -340,6 +343,7 @@ class StatementService:
                         statement_id=statement.id,
                         account_number=txn_account_number,
                         account_id=txn_account_id,
+                        user_id=user_id,
                         **txn_fields,
                     )
                     self.db.add(transaction)
@@ -366,6 +370,7 @@ class StatementService:
                     statement_id=statement.id,
                     account_number=statement.account_number,
                     fee_date=statement.statement_date,
+                    user_id=user_id,
                     **fee_data,
                 )
                 self.db.add(fee)
@@ -1014,18 +1019,24 @@ class StatementService:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
-    async def get_analytics(self, statement_id: int) -> Dict[str, Any]:
-        statement = await self.get_statement(statement_id)
+    async def get_analytics(self, statement_id: int, user_id: int) -> Dict[str, Any]:
+        statement = await self.get_statement(statement_id, user_id)
         if not statement:
             return {}
         result = await self.db.execute(
             select(CategorySummary)
-            .where(CategorySummary.statement_id == statement_id)
+            .where(
+                CategorySummary.statement_id == statement_id,
+                CategorySummary.user_id == user_id,
+            )
             .order_by(CategorySummary.total_amount.desc())
         )
         categories = list(result.scalars().all())
         result = await self.db.execute(
-            select(Transaction).where(Transaction.statement_id == statement_id)
+            select(Transaction).where(
+                Transaction.statement_id == statement_id,
+                Transaction.user_id == user_id,
+            )
         )
         transactions = list(result.scalars().all())
         return {

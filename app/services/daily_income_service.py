@@ -42,6 +42,7 @@ class DailyIncomeService:
 
     async def save_income(
         self,
+        user_id: int,
         amount: Decimal,
         description: str,
         transaction_date: Optional[date] = None,
@@ -59,6 +60,7 @@ class DailyIncomeService:
             source_type = "other"
 
         income = DailyIncome(
+            user_id=user_id,
             amount=amount,
             currency=currency,
             description_raw=description.strip(),
@@ -77,6 +79,7 @@ class DailyIncomeService:
 
     async def get_income_entries(
         self,
+        user_id: int,
         date_from: Optional[date] = None,
         date_to: Optional[date] = None,
         source_type: Optional[str] = None,
@@ -87,13 +90,14 @@ class DailyIncomeService:
         Get income entries with optional filters.
 
         Args:
+            user_id: Filter by user ownership
             date_from: Filter by transaction_date >= date_from
             date_to: Filter by transaction_date <= date_to
             source_type: Filter by source_type
             limit: Maximum number of results
             offset: Offset for pagination
         """
-        query = select(DailyIncome)
+        query = select(DailyIncome).where(DailyIncome.user_id == user_id)
 
         # Build filters
         filters = []
@@ -114,23 +118,25 @@ class DailyIncomeService:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
-    async def get_income_by_id(self, income_id: int) -> Optional[DailyIncome]:
-        """Get a single income entry by ID."""
-        result = await self.db.execute(
-            select(DailyIncome).where(DailyIncome.id == income_id)
-        )
+    async def get_income_by_id(self, income_id: int, user_id: Optional[int] = None) -> Optional[DailyIncome]:
+        """Get a single income entry by ID (optionally scoped to user)."""
+        query = select(DailyIncome).where(DailyIncome.id == income_id)
+        if user_id is not None:
+            query = query.where(DailyIncome.user_id == user_id)
+        result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
     async def update_income(
         self,
         income_id: int,
+        user_id: int,
         amount: Optional[Decimal] = None,
         description: Optional[str] = None,
         source_type: Optional[str] = None,
         transaction_date: Optional[date] = None,
     ) -> Optional[DailyIncome]:
         """Update an income entry."""
-        income = await self.get_income_by_id(income_id)
+        income = await self.get_income_by_id(income_id, user_id=user_id)
         if not income:
             return None
 
@@ -153,9 +159,9 @@ class DailyIncomeService:
         logger.info(f"Updated income: {income_id}")
         return income
 
-    async def delete_income(self, income_id: int) -> bool:
+    async def delete_income(self, income_id: int, user_id: int) -> bool:
         """Delete an income entry."""
-        income = await self.get_income_by_id(income_id)
+        income = await self.get_income_by_id(income_id, user_id=user_id)
         if not income:
             return False
 
@@ -170,13 +176,14 @@ class DailyIncomeService:
 
     async def get_statistics(
         self,
+        user_id: int,
         date_from: Optional[date] = None,
         date_to: Optional[date] = None
     ) -> Dict[str, Any]:
         """
         Get income statistics for a date range.
         """
-        query = select(DailyIncome)
+        query = select(DailyIncome).where(DailyIncome.user_id == user_id)
 
         filters = []
         if date_from:
@@ -207,7 +214,7 @@ class DailyIncomeService:
             "average_income": float(total_amount / len(income_entries)) if income_entries else 0,
         }
 
-    async def get_monthly_summary(self, year: int, month: int) -> Dict[str, Any]:
+    async def get_monthly_summary(self, user_id: int, year: int, month: int) -> Dict[str, Any]:
         """
         Get income summary for a specific month.
         """
@@ -217,7 +224,7 @@ class DailyIncomeService:
         first_day = date(year, month, 1)
         last_day = date(year, month, monthrange(year, month)[1])
 
-        stats = await self.get_statistics(date_from=first_day, date_to=last_day)
+        stats = await self.get_statistics(user_id=user_id, date_from=first_day, date_to=last_day)
 
         return {
             "year": year,

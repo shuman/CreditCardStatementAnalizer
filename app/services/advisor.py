@@ -53,6 +53,7 @@ class AdvisorService:
 
     async def analyze_period(
         self,
+        user_id: int,
         period_from: date,
         period_to: date,
         account_id: Optional[int] = None,
@@ -64,30 +65,30 @@ class AdvisorService:
         new_insights: List[Insight] = []
 
         # 1. Monthly spending report (uses Claude)
-        report = await self._generate_monthly_report(period_from, period_to, account_id)
+        report = await self._generate_monthly_report(user_id, period_from, period_to, account_id)
         if report:
             new_insights.append(report)
 
         # 2. Overspending alerts (pure Python — no Claude)
-        overspending = await self._detect_overspending(period_from, period_to, account_id)
+        overspending = await self._detect_overspending(user_id, period_from, period_to, account_id)
         new_insights.extend(overspending)
 
         # 3. FX cost analysis (pure Python — no Claude)
-        fx_insight = await self._fx_cost_report(period_from, period_to, account_id)
+        fx_insight = await self._fx_cost_report(user_id, period_from, period_to, account_id)
         if fx_insight:
             new_insights.append(fx_insight)
 
         # 4. Duplicate subscription detection (pure Python)
-        dup_insight = await self._detect_duplicate_subscriptions(period_from, period_to)
+        dup_insight = await self._detect_duplicate_subscriptions(user_id, period_from, period_to)
         if dup_insight:
             new_insights.append(dup_insight)
 
         # 5. Reward expiry alert (pure Python)
-        reward_insights = await self._check_reward_expiry()
+        reward_insights = await self._check_reward_expiry(user_id)
         new_insights.extend(reward_insights)
 
         # 6. Budget breach alerts (pure Python)
-        budget_insights = await self._check_budget_breaches(period_from, period_to)
+        budget_insights = await self._check_budget_breaches(user_id, period_from, period_to)
         new_insights.extend(budget_insights)
 
         logger.info(f"Generated {len(new_insights)} insights for {period_from} – {period_to}")
@@ -99,6 +100,7 @@ class AdvisorService:
 
     async def _generate_monthly_report(
         self,
+        user_id: int,
         period_from: date,
         period_to: date,
         account_id: Optional[int],
@@ -108,7 +110,7 @@ class AdvisorService:
         if not client:
             return None
 
-        snapshot = await self._build_spending_snapshot(period_from, period_to, account_id)
+        snapshot = await self._build_spending_snapshot(user_id, period_from, period_to, account_id)
         if not snapshot["transactions"]:
             return None
 
@@ -144,6 +146,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
             return None
 
         insight = Insight(
+            user_id=user_id,
             insight_type="monthly_report",
             scope="monthly",
             period_from=period_from,
@@ -166,18 +169,19 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
 
     async def _detect_overspending(
         self,
+        user_id: int,
         period_from: date,
         period_to: date,
         account_id: Optional[int],
     ) -> List[Insight]:
         """Detect categories where spending increased >20% vs 3-month average."""
         # Current period spending by category
-        current = await self._spending_by_category(period_from, period_to, account_id)
+        current = await self._spending_by_category(user_id, period_from, period_to, account_id)
 
         # 3-month lookback
         lookback_to = period_from - timedelta(days=1)
         lookback_from = lookback_to - timedelta(days=90)
-        historical = await self._spending_by_category(lookback_from, lookback_to, account_id)
+        historical = await self._spending_by_category(user_id, lookback_from, lookback_to, account_id)
 
         insights = []
         for category, current_amount in current.items():
@@ -189,6 +193,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
                 increase_pct = ((float(current_amount) - monthly_avg) / monthly_avg) * 100
                 if increase_pct > 20 and float(current_amount) > 500:  # BDT 500 threshold
                     insight = Insight(
+                        user_id=user_id,
                         insight_type="overspending",
                         scope="monthly",
                         period_from=period_from,
@@ -224,12 +229,14 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
 
     async def _fx_cost_report(
         self,
+        user_id: int,
         period_from: date,
         period_to: date,
         account_id: Optional[int],
     ) -> Optional[Insight]:
         """Calculate how much was lost to FX markup on foreign transactions."""
         query = select(Transaction).where(
+            Transaction.user_id == user_id,
             Transaction.transaction_date.between(period_from, period_to),
             Transaction.original_currency.isnot(None),
             Transaction.original_currency != "BDT",
@@ -263,6 +270,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
         currencies = list({t.original_currency for t in foreign_txns})
 
         insight = Insight(
+            user_id=user_id,
             insight_type="fx_cost_report",
             scope="monthly",
             period_from=period_from,
@@ -298,10 +306,11 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
     # ------------------------------------------------------------------
 
     async def _detect_duplicate_subscriptions(
-        self, period_from: date, period_to: date
+        self, user_id: int, period_from: date, period_to: date
     ) -> Optional[Insight]:
         """Detect the same subscription appearing on multiple cards."""
         query = select(Transaction).where(
+            Transaction.user_id == user_id,
             Transaction.transaction_date.between(period_from, period_to),
             Transaction.debit_credit == "D",
             Transaction.is_recurring == True,
@@ -326,6 +335,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
 
         dup_list = "\n".join(f"- **{m.title()}** on {len(a)} cards" for m, a in duplicates.items())
         insight = Insight(
+            user_id=user_id,
             insight_type="duplicate_subscription",
             scope="monthly",
             period_from=period_from,
@@ -351,11 +361,14 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
     # Insight 5: Reward Expiry Alert (pure Python)
     # ------------------------------------------------------------------
 
-    async def _check_reward_expiry(self) -> List[Insight]:
+    async def _check_reward_expiry(self, user_id: int) -> List[Insight]:
         """Alert if reward points are expiring within 30 days."""
         result = await self.db.execute(
             select(RewardsSummary)
-            .where(RewardsSummary.points_expiring_next_month > 0)
+            .where(
+                RewardsSummary.user_id == user_id,
+                RewardsSummary.points_expiring_next_month > 0,
+            )
             .order_by(RewardsSummary.statement_date.desc())
         )
         summaries = result.scalars().all()
@@ -372,6 +385,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
                 continue
 
             insight = Insight(
+                user_id=user_id,
                 insight_type="reward_expiry_alert",
                 scope="monthly",
                 period_from=date.today(),
@@ -406,15 +420,18 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
     # ------------------------------------------------------------------
 
     async def _check_budget_breaches(
-        self, period_from: date, period_to: date
+        self, user_id: int, period_from: date, period_to: date
     ) -> List[Insight]:
         """Check if any budgets are breached or near the alert threshold."""
         result = await self.db.execute(
-            select(Budget).where(Budget.is_active == True)
+            select(Budget).where(
+                Budget.user_id == user_id,
+                Budget.is_active == True,
+            )
         )
         budgets = result.scalars().all()
 
-        current_spending = await self._spending_by_category(period_from, period_to, None)
+        current_spending = await self._spending_by_category(user_id, period_from, period_to, None)
         insights = []
 
         for budget in budgets:
@@ -435,6 +452,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
                 continue
 
             insight = Insight(
+                user_id=user_id,
                 insight_type="budget_breach",
                 scope="monthly",
                 period_from=period_from,
@@ -470,12 +488,14 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
 
     async def _build_spending_snapshot(
         self,
+        user_id: int,
         period_from: date,
         period_to: date,
         account_id: Optional[int],
     ) -> Dict[str, Any]:
         """Build a compact spending summary (pure Python, zero tokens)."""
         query = select(Transaction).where(
+            Transaction.user_id == user_id,
             Transaction.transaction_date.between(period_from, period_to),
             Transaction.debit_credit == "D",
         )
@@ -527,12 +547,14 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
 
     async def _spending_by_category(
         self,
+        user_id: int,
         period_from: date,
         period_to: date,
         account_id: Optional[int],
     ) -> Dict[str, Decimal]:
         """Sum spending by category for a date range."""
         query = select(Transaction).where(
+            Transaction.user_id == user_id,
             Transaction.transaction_date.between(period_from, period_to),
             Transaction.debit_credit == "D",
         )
@@ -555,6 +577,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
 
     async def generate_advisor_report(
         self,
+        user_id: int,
         year: int,
         month: int,
         account_id: Optional[int] = None,
@@ -573,19 +596,19 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
         """
         # Check cache
         if not force_regenerate:
-            cached = await self._get_cached_report(year, month, account_id)
+            cached = await self._get_cached_report(user_id, year, month, account_id)
             if cached:
                 logger.info(f"Returning cached advisor report for {year}-{month:02d}")
                 return cached
 
         # If forcing, delete any existing cached report
         if force_regenerate:
-            await self._delete_cached_report(year, month, account_id)
+            await self._delete_cached_report(user_id, year, month, account_id)
 
         # Compute signals
         from app.services.signal_engine import SignalEngine
         signal_engine = SignalEngine(self.db)
-        signals = await signal_engine.compute_all_signals(year, month, account_id)
+        signals = await signal_engine.compute_all_signals(user_id, year, month, account_id)
 
         if not signals.get("has_data"):
             logger.warning(f"No transaction data for {year}-{month:02d}")
@@ -593,7 +616,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
 
         # Get previous month score for delta
         prev_year, prev_month = (year, month - 1) if month > 1 else (year - 1, 12)
-        prev_report = await self._get_cached_report(prev_year, prev_month, account_id)
+        prev_report = await self._get_cached_report(user_id, prev_year, prev_month, account_id)
         prev_score = prev_report.score if prev_report else None
 
         # Call Claude
@@ -645,6 +668,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
 
         # Store as AdvisorReport
         report = AdvisorReport(
+            user_id=user_id,
             year=year,
             month=month,
             account_id=account_id,
@@ -685,10 +709,11 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
         return report
 
     async def _get_cached_report(
-        self, year: int, month: int, account_id: Optional[int]
+        self, user_id: int, year: int, month: int, account_id: Optional[int]
     ) -> Optional[AdvisorReport]:
         """Retrieve a cached advisor report."""
         query = select(AdvisorReport).where(
+            AdvisorReport.user_id == user_id,
             AdvisorReport.year == year,
             AdvisorReport.month == month,
         )
@@ -700,10 +725,10 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
         return result.scalar_one_or_none()
 
     async def _delete_cached_report(
-        self, year: int, month: int, account_id: Optional[int]
+        self, user_id: int, year: int, month: int, account_id: Optional[int]
     ) -> None:
         """Delete a cached advisor report."""
-        report = await self._get_cached_report(year, month, account_id)
+        report = await self._get_cached_report(user_id, year, month, account_id)
         if report:
             await self.db.delete(report)
             await self.db.commit()

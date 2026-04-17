@@ -9,6 +9,8 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import Account
+from app.models import User
+from app.routers.auth import get_current_user
 from app.services.report_engine import ReportEngine
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -34,6 +36,7 @@ async def dashboard(
     month: Optional[int] = Query(None),
     account_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Return all 6 reports for the dashboard."""
     from datetime import date as _date
@@ -42,11 +45,11 @@ async def dashboard(
     month = month or today.month
 
     engine = ReportEngine(db)
-    data = await engine.generate_all(year, month, account_id)
+    data = await engine.generate_all(year, month, account_id, user_id=current_user.id)
 
     # Attach list of accounts for the filter dropdown
     acct_result = await db.execute(
-        select(Account).where(Account.is_active == True).order_by(Account.id)
+        select(Account).where(Account.is_active == True, Account.user_id == current_user.id).order_by(Account.id)
     )
     data["accounts"] = [
         {
@@ -65,14 +68,15 @@ async def dashboard(
 async def yearly_dashboard(
     account_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Return all yearly dashboard data (12-month aggregated)."""
     engine = ReportEngine(db)
-    data = await engine.generate_yearly_dashboard(account_id)
+    data = await engine.generate_yearly_dashboard(account_id, user_id=current_user.id)
 
     # Attach list of accounts for the filter dropdown
     acct_result = await db.execute(
-        select(Account).where(Account.is_active == True).order_by(Account.id)
+        select(Account).where(Account.is_active == True, Account.user_id == current_user.id).order_by(Account.id)
     )
     data["accounts"] = [
         {
@@ -94,6 +98,7 @@ async def individual_report(
     month: Optional[int] = Query(None),
     account_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Return a single report by ID for drill-down view."""
     from datetime import date as _date
@@ -110,4 +115,4 @@ async def individual_report(
 
     engine = ReportEngine(db)
     method = getattr(engine, method_name)
-    return await method(year, month, account_id)
+    return await method(year, month, account_id, user_id=current_user.id)
