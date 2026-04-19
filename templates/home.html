@@ -305,33 +305,48 @@
                         A structured view of your<br>financial situation
                     </h2>
                     <p class="mt-6 text-lg text-gray-500 leading-relaxed">
-                        Kipta App generates a detailed report that brings together multiple aspects of
-                        your finances:
+                        Kipta App generates interactive report cards from your real transaction data — updated every month:
                     </p>
-                    <ul class="mt-6 space-y-3">
+                    <ul class="mt-6 space-y-4">
                         <li class="flex items-start gap-3">
-                            <i class="fas fa-check-circle text-indigo-500 mt-1 shrink-0"></i>
-                            <span class="text-gray-600">Financial health indicators</span>
+                            <div class="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fas fa-layer-group text-cyan-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Category Spending</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Horizontal breakdown of every spending category with month-over-month change</p>
+                            </div>
                         </li>
                         <li class="flex items-start gap-3">
-                            <i class="fas fa-check-circle text-indigo-500 mt-1 shrink-0"></i>
-                            <span class="text-gray-600">Spending behavior insights</span>
+                            <div class="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fas fa-chart-line text-teal-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Lifestyle Creep</span>
+                                <p class="text-gray-500 text-sm mt-0.5">6-month trend line showing whether your spending is quietly increasing</p>
+                            </div>
                         </li>
                         <li class="flex items-start gap-3">
-                            <i class="fas fa-check-circle text-indigo-500 mt-1 shrink-0"></i>
-                            <span class="text-gray-600">Income stability overview</span>
+                            <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fas fa-calendar-check text-violet-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">No-Spend Days</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Calendar heatmap tracking days with zero spending, streaks, and goals</p>
+                            </div>
                         </li>
                         <li class="flex items-start gap-3">
-                            <i class="fas fa-check-circle text-indigo-500 mt-1 shrink-0"></i>
-                            <span class="text-gray-600">Areas that may need attention</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <i class="fas fa-check-circle text-indigo-500 mt-1 shrink-0"></i>
-                            <span class="text-gray-600">Opportunities to improve savings</span>
+                            <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fas fa-chart-pie text-indigo-500 text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Monthly Breakdown</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Doughnut chart showing where each taka went across all categories</p>
+                            </div>
                         </li>
                     </ul>
                     <p class="mt-6 text-gray-400 italic">
-                        Coherent and understandable, not fragmented.
+                        Filter by account, month, or category — every card is clickable for a detailed view.
                     </p>
                 </div>
 
@@ -349,101 +364,180 @@
                                     kipta.app/reports</div>
                             </div>
                         </div>
-                        <div class="preview-frame bg-slate-50" style="height:370px">
+                        <div class="preview-frame bg-slate-50" style="height:420px">
                             <div class="preview-content p-3" style="transform:scale(0.52);width:192.3%">
                                 <!-- Filter pills -->
                                 <div class="flex items-center gap-2 mb-3">
-                                    <span
-                                        class="px-3 py-1 rounded-full text-xs font-medium bg-indigo-600 text-white">All</span>
-                                    <span
-                                        class="px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-500 border border-gray-200">Spending</span>
-                                    <span
-                                        class="px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-500 border border-gray-200">Income</span>
-                                    <span
-                                        class="px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-500 border border-gray-200">Health</span>
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-indigo-600 text-white">All</span>
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-500 border border-gray-200">Spending</span>
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-500 border border-gray-200">Income</span>
+                                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-500 border border-gray-200">Habits</span>
                                 </div>
                                 <!-- Report cards grid -->
-                                <div class="grid grid-cols-2 gap-3">
-                                    <!-- Card: Monthly Breakdown -->
-                                    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col"
-                                        style="height:340px">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <div
-                                                class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
-                                                <i class="fas fa-chart-pie text-indigo-500 text-xs"></i>
-                                            </div>
-                                            <div>
-                                                <p class="text-xs font-semibold text-gray-800">Monthly Breakdown</p>
-                                                <p class="text-[10px] text-gray-400">6 categories &middot;
-                                                    5,52,000 BDT</p>
-                                            </div>
-                                        </div>
-                                        <div class="flex-1 min-h-0"><canvas id="reportDoughnut"></canvas>
-                                        </div>
-                                        <div class="pt-2 border-t border-gray-50 text-[10px] text-gray-400">
-                                            Food & Dining is your largest spending category at 28%
-                                        </div>
-                                    </div>
-                                    <!-- Card: Income vs Expenses -->
-                                    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col"
-                                        style="height:340px">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <div
-                                                class="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center">
-                                                <i class="fas fa-balance-scale text-green-500 text-xs"></i>
-                                            </div>
-                                            <div>
-                                                <p class="text-xs font-semibold text-gray-800">Income vs Expenses</p>
-                                                <p class="text-[10px] text-gray-400">Net flow: +1,28,000 BDT</p>
-                                            </div>
-                                        </div>
-                                        <div class="flex-1 min-h-0"><canvas id="reportBarChart"></canvas>
-                                        </div>
-                                        <div class="pt-2 border-t border-gray-50 text-[10px] text-gray-400">
-                                            Positive cash flow in 5 of 6 months
-                                        </div>
-                                    </div>
-                                    <!-- Card: Health Score (partially clipped) -->
-                                    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col"
-                                        style="height:340px">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <div
-                                                class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
-                                                <i class="fas fa-heartbeat text-emerald-500 text-xs"></i>
-                                            </div>
-                                            <div>
-                                                <p class="text-xs font-semibold text-gray-800">Health Score</p>
-                                                <p class="text-[10px] text-gray-400">Good &middot; 72/100</p>
-                                            </div>
-                                        </div>
-                                        <div class="flex-1 flex items-center justify-center">
-                                            <div class="relative w-40 h-20">
-                                                <svg viewBox="0 0 200 100" class="w-full">
-                                                    <path d="M 20 90 A 80 80 0 0 1 180 90" fill="none" stroke="#e5e7eb"
-                                                        stroke-width="12" stroke-linecap="round" />
-                                                    <path d="M 20 90 A 80 80 0 0 1 180 90" fill="none" stroke="#10b981"
-                                                        stroke-width="12" stroke-linecap="round" stroke-dasharray="251"
-                                                        stroke-dashoffset="70" />
-                                                </svg>
-                                                <div class="absolute inset-0 flex items-end justify-center pb-1">
-                                                    <span class="text-2xl font-bold text-emerald-600">72</span>
+                                <div class="grid gap-3" style="grid-template-columns: repeat(2, 1fr);">
+                                    <!-- Card: Category Spending (wide) -->
+                                    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col" style="grid-column: span 2; height:300px;">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <div class="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center"><i class="fas fa-layer-group text-cyan-500 text-xs"></i></div>
+                                                <div>
+                                                    <p class="text-xs font-semibold text-gray-800">Category Spending</p>
+                                                    <p class="text-[10px] text-gray-400">Total: 4,24,000 BDT | 8 categories</p>
                                                 </div>
                                             </div>
+                                            <i class="fas fa-expand-alt text-xs text-gray-300"></i>
                                         </div>
+                                        <div class="flex-1 min-h-0 overflow-hidden space-y-0">
+                                            <!-- Category rows -->
+                                            <div class="flex items-center gap-2" style="height:26px;">
+                                                <div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:#6366f1;"></div>
+                                                <span class="text-[11px] font-medium text-gray-700 flex-shrink-0 w-24">Food & Dining</span>
+                                                <div class="flex-1 min-w-0"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-1.5"><div class="h-1.5 rounded-full" style="width:32%;background:#6366f1;"></div></div><span class="text-[10px] text-gray-400 w-6 text-right">32%</span></div></div>
+                                                <span class="text-[11px] font-bold text-gray-800 w-16 text-right tabular-nums">1,35,680</span>
+                                                <span class="text-[10px] text-red-500 w-10 text-right tabular-nums">+12%</span>
+                                            </div>
+                                            <div class="flex items-center gap-2" style="height:26px;">
+                                                <div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:#f59e0b;"></div>
+                                                <span class="text-[11px] font-medium text-gray-700 flex-shrink-0 w-24">Shopping</span>
+                                                <div class="flex-1 min-w-0"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-1.5"><div class="h-1.5 rounded-full" style="width:20%;background:#f59e0b;"></div></div><span class="text-[10px] text-gray-400 w-6 text-right">20%</span></div></div>
+                                                <span class="text-[11px] font-bold text-gray-800 w-16 text-right tabular-nums">84,800</span>
+                                                <span class="text-[10px] text-green-500 w-10 text-right tabular-nums">-5%</span>
+                                            </div>
+                                            <div class="flex items-center gap-2" style="height:26px;">
+                                                <div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:#10b981;"></div>
+                                                <span class="text-[11px] font-medium text-gray-700 flex-shrink-0 w-24">Transport</span>
+                                                <div class="flex-1 min-w-0"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-1.5"><div class="h-1.5 rounded-full" style="width:14%;background:#10b981;"></div></div><span class="text-[10px] text-gray-400 w-6 text-right">14%</span></div></div>
+                                                <span class="text-[11px] font-bold text-gray-800 w-16 text-right tabular-nums">59,360</span>
+                                                <span class="text-[10px] text-red-500 w-10 text-right tabular-nums">+8%</span>
+                                            </div>
+                                            <div class="flex items-center gap-2" style="height:26px;">
+                                                <div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:#ef4444;"></div>
+                                                <span class="text-[11px] font-medium text-gray-700 flex-shrink-0 w-24">Bills & Utilities</span>
+                                                <div class="flex-1 min-w-0"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-1.5"><div class="h-1.5 rounded-full" style="width:13%;background:#ef4444;"></div></div><span class="text-[10px] text-gray-400 w-6 text-right">13%</span></div></div>
+                                                <span class="text-[11px] font-bold text-gray-800 w-16 text-right tabular-nums">55,120</span>
+                                                <span class="text-[10px] text-gray-300 w-10 text-right tabular-nums">0%</span>
+                                            </div>
+                                            <div class="flex items-center gap-2" style="height:26px;">
+                                                <div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:#8b5cf6;"></div>
+                                                <span class="text-[11px] font-medium text-gray-700 flex-shrink-0 w-24">Entertainment</span>
+                                                <div class="flex-1 min-w-0"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-1.5"><div class="h-1.5 rounded-full" style="width:9%;background:#8b5cf6;"></div></div><span class="text-[10px] text-gray-400 w-6 text-right">9%</span></div></div>
+                                                <span class="text-[11px] font-bold text-gray-800 w-16 text-right tabular-nums">38,160</span>
+                                                <span class="text-[10px] text-red-500 w-10 text-right tabular-nums">+22%</span>
+                                            </div>
+                                            <div class="flex items-center gap-2" style="height:26px;">
+                                                <div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:#f97316;"></div>
+                                                <span class="text-[11px] font-medium text-gray-700 flex-shrink-0 w-24">Subscriptions</span>
+                                                <div class="flex-1 min-w-0"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-1.5"><div class="h-1.5 rounded-full" style="width:6%;background:#f97316;"></div></div><span class="text-[10px] text-gray-400 w-6 text-right">6%</span></div></div>
+                                                <span class="text-[11px] font-bold text-gray-800 w-16 text-right tabular-nums">25,440</span>
+                                                <span class="text-[10px] text-red-500 w-10 text-right tabular-nums">+3%</span>
+                                            </div>
+                                            <div class="flex items-center gap-2" style="height:26px;">
+                                                <div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:#06b6d4;"></div>
+                                                <span class="text-[11px] font-medium text-gray-700 flex-shrink-0 w-24">Health</span>
+                                                <div class="flex-1 min-w-0"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-1.5"><div class="h-1.5 rounded-full" style="width:4%;background:#06b6d4;"></div></div><span class="text-[10px] text-gray-400 w-6 text-right">4%</span></div></div>
+                                                <span class="text-[11px] font-bold text-gray-800 w-16 text-right tabular-nums">16,960</span>
+                                                <span class="text-[10px] text-green-500 w-10 text-right tabular-nums">-15%</span>
+                                            </div>
+                                            <div class="flex items-center gap-2" style="height:26px;">
+                                                <div class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:#ec4899;"></div>
+                                                <span class="text-[11px] font-medium text-gray-700 flex-shrink-0 w-24">Others</span>
+                                                <div class="flex-1 min-w-0"><div class="flex items-center gap-2"><div class="flex-1 bg-gray-100 rounded-full h-1.5"><div class="h-1.5 rounded-full" style="width:2%;background:#ec4899;"></div></div><span class="text-[10px] text-gray-400 w-6 text-right">2%</span></div></div>
+                                                <span class="text-[11px] font-bold text-gray-800 w-16 text-right tabular-nums">8,480</span>
+                                                <span class="text-[10px] text-gray-300 w-10 text-right tabular-nums">0%</span>
+                                            </div>
+                                        </div>
+                                        <div class="pt-1.5 border-t border-gray-50 text-[10px] text-gray-400">Top: Food & Dining (32%) &middot; Entertainment spiked +22%</div>
                                     </div>
-                                    <!-- Card: Subscriptions (partially clipped) -->
-                                    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col"
-                                        style="height:340px">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <div class="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center">
-                                                <i class="fas fa-sync-alt text-rose-500 text-xs"></i>
+
+                                    <!-- Card: Lifestyle Creep -->
+                                    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col" style="height:260px;">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <div class="w-7 h-7 rounded-lg bg-teal-50 flex items-center justify-center"><i class="fas fa-chart-line text-teal-500 text-xs"></i></div>
+                                                <div>
+                                                    <p class="text-xs font-semibold text-gray-800">Lifestyle Creep</p>
+                                                    <p class="text-[10px] text-gray-400">Trend: +14.2%</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p class="text-xs font-semibold text-gray-800">Subscriptions</p>
-                                                <p class="text-[10px] text-gray-400">7 active &middot; 8,450
-                                                    BDT/mo</p>
+                                            <i class="fas fa-expand-alt text-xs text-gray-300"></i>
+                                        </div>
+                                        <div class="flex-1 min-h-0"><canvas id="reportLifestyleCreep"></canvas></div>
+                                        <div class="pt-1.5 border-t border-gray-50 text-[10px] text-gray-400">Biggest increase: Food & Dining</div>
+                                    </div>
+
+                                    <!-- Card: No-Spend Days -->
+                                    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col" style="height:260px;">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <div class="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center"><i class="fas fa-calendar-check text-violet-500 text-xs"></i></div>
+                                                <div>
+                                                    <p class="text-xs font-semibold text-gray-800">No-Spend Days</p>
+                                                    <p class="text-[10px] text-gray-400">12/31 days (39%)</p>
+                                                </div>
+                                            </div>
+                                            <i class="fas fa-expand-alt text-xs text-gray-300"></i>
+                                        </div>
+                                        <div class="flex-1 min-h-0 flex items-center justify-center">
+                                            <div class="grid grid-cols-7 gap-[3px] w-full max-w-[240px]">
+                                                <!-- Day headers -->
+                                                <span class="text-[8px] text-gray-400 text-center">S</span>
+                                                <span class="text-[8px] text-gray-400 text-center">M</span>
+                                                <span class="text-[8px] text-gray-400 text-center">T</span>
+                                                <span class="text-[8px] text-gray-400 text-center">W</span>
+                                                <span class="text-[8px] text-gray-400 text-center">T</span>
+                                                <span class="text-[8px] text-gray-400 text-center">F</span>
+                                                <span class="text-[8px] text-gray-400 text-center">S</span>
+                                                <!-- March 2026 starts on Sunday -->
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">1</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">2</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">3</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">4</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">5</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">6</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">7</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">8</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">9</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">10</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">11</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">12</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">13</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">14</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">15</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">16</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">17</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">18</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">19</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">20</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">21</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">22</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">23</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">24</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">25</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">26</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">27</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">28</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-green-100 text-green-700">29</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">30</div>
+                                                <div class="w-full aspect-square rounded-[3px] flex items-center justify-center text-[9px] font-medium bg-red-100 text-red-700">31</div>
                                             </div>
                                         </div>
+                                        <div class="pt-1.5 border-t border-gray-50 text-[10px] text-gray-400">Streak: 3d | Best: 5d | Goal: 10d</div>
+                                    </div>
+
+                                    <!-- Card: Monthly Breakdown (partially visible) -->
+                                    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col" style="grid-column: span 2; height:260px;">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center"><i class="fas fa-chart-pie text-indigo-500 text-xs"></i></div>
+                                                <div>
+                                                    <p class="text-xs font-semibold text-gray-800">Monthly Breakdown</p>
+                                                    <p class="text-[10px] text-gray-400">6 categories &middot; 4,24,000 BDT</p>
+                                                </div>
+                                            </div>
+                                            <i class="fas fa-expand-alt text-xs text-gray-300"></i>
+                                        </div>
+                                        <div class="flex-1 min-h-0"><canvas id="reportMonthlyBreakdown"></canvas></div>
+                                        <div class="pt-1.5 border-t border-gray-50 text-[10px] text-gray-400">Food & Dining is your largest category at 32%</div>
                                     </div>
                                 </div>
                             </div>
@@ -1519,39 +1613,47 @@
                 }
             });
 
-            // Reports: Category Spending
-            new Chart(document.getElementById('reportDoughnut'), {
+            // Reports: Lifestyle Creep (line chart)
+            new Chart(document.getElementById('reportLifestyleCreep'), {
+                type: 'line',
+                data: {
+                    labels: months.slice(0, 6),
+                    datasets: [{
+                        data: [36200, 41300, 45200, 42400, 48700, 55100],
+                        borderColor: '#14b981',
+                        backgroundColor: 'rgba(20, 185, 129, 0.08)',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#14b981',
+                        pointBorderWidth: 1.5,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { display: false, beginAtZero: false },
+                        x: { ticks: { font: { size: 9 }, color: '#9ca3af' }, grid: { display: false }, border: { display: false } }
+                    }
+                }
+            });
+
+            // Reports: Monthly Breakdown (doughnut)
+            new Chart(document.getElementById('reportMonthlyBreakdown'), {
                 type: 'doughnut',
                 data: {
                     labels: ['Food & Dining', 'Shopping', 'Transport', 'Bills', 'Entertainment', 'Others'],
-                    datasets: [{ data: [28, 18, 12, 15, 8, 19], backgroundColor: COLORS.slice(0, 6), borderWidth: 0 }]
+                    datasets: [{ data: [32, 20, 14, 13, 9, 12], backgroundColor: COLORS.slice(0, 6), borderWidth: 0 }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     cutout: '65%',
                     plugins: { legend: { position: 'right', labels: { boxWidth: 7, padding: 6, font: { size: 9 }, color: '#6b7280' } } }
-                }
-            });
-
-            // Reports: Income vs Expenses
-            new Chart(document.getElementById('reportBarChart'), {
-                type: 'bar',
-                data: {
-                    labels: months.slice(0, 6),
-                    datasets: [
-                        { label: 'Income', data: [65000, 62000, 68000, 63000, 67000, 71000], backgroundColor: '#10b981', borderRadius: 3, barPercentage: 0.7 },
-                        { label: 'Expenses', data: spending.slice(0, 6), backgroundColor: '#6366f1', borderRadius: 3, barPercentage: 0.7 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top', labels: { boxWidth: 8, padding: 8, font: { size: 9 }, color: '#6b7280' } } },
-                    scales: {
-                        y: { display: false, beginAtZero: true },
-                        x: { ticks: { font: { size: 9 }, color: '#9ca3af' }, grid: { display: false }, border: { display: false } }
-                    }
                 }
             });
 
