@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Sitemap: https://kipta.app/sitemap.xml
+
+User-agent: *
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /upload
+Disallow: /statements
+Disallow: /transactions
+Disallow: /accounts
+Disallow: /advisor
+Disallow: /daily-expenses
+Disallow: /daily-income
+Disallow: /liabilities
+Disallow: /preview

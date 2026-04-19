@@ -5,7 +5,7 @@ import logging
 from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from contextlib import asynccontextmanager
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -228,6 +228,7 @@ templates = Jinja2Templates(directory="templates")
 templates.env.globals["app_name"] = settings.app_name
 templates.env.globals["app_version"] = settings.app_version
 templates.env.globals["google_oauth_client_id"] = settings.google_oauth_client_id or ""
+templates.env.globals["site_url"] = settings.site_url
 
 # ---------------------------------------------------------------------------
 # API routers
@@ -406,6 +407,16 @@ async def health_check():
         "version": settings.app_version,
         "claude_vision": bool(settings.anthropic_api_key),
     }
+
+
+@app.get("/robots.txt")
+async def robots_txt():
+    return FileResponse("static/robots.txt", media_type="text/plain")
+
+
+@app.get("/sitemap.xml")
+async def sitemap_xml():
+    return FileResponse("static/sitemap.xml", media_type="application/xml")
 
 
 if __name__ == "__main__":

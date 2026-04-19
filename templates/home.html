@@ -6,6 +6,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kipta — AI-Powered Personal Finance Intelligence</title>
 
+    <!-- Favicon -->
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+
+    <!-- SEO & PWA -->
+    <meta name="description" content="Kipta — AI-powered personal finance intelligence. Upload bank statements, get instant spending insights, category breakdowns, and personalized financial guidance.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.svg">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://kipta.app/">
+
+    <!-- OpenGraph -->
+    <meta property="og:title" content="Kipta — AI-Powered Personal Finance Intelligence">
+    <meta property="og:description" content="Turn your bank and credit card statements into structured data, clear insights, and thoughtful financial guidance. No manual tracking, no spreadsheets.">
+    <meta property="og:url" content="https://kipta.app/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Kipta">
+    <meta property="og:image" content="https://kipta.app/static/og-image.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Kipta — AI-Powered Personal Finance Intelligence">
+    <meta name="twitter:description" content="Turn your bank statements into structured data, clear insights, and financial guidance.">
+    <meta name="twitter:image" content="https://kipta.app/static/og-image.png">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Kipta",
+      "url": "https://kipta.app",
+      "description": "AI-powered personal finance intelligence platform that turns bank statements into insights and guidance.",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "featureList": [
+        "Bank statement parsing",
+        "Spending category breakdown",
+        "Monthly trend analysis",
+        "Income vs expense tracking",
+        "AI-powered financial advisor",
+        "Multi-account support"
+      ]
+    }
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -73,7 +124,7 @@
                     <span class="text-xl font-bold text-gray-900">Kipta</span>
                 </a>
                 <div class="flex items-center gap-4">
-                    <a href="/login"
+                    <a href="/login" aria-label="Get started with Kipta"
                         class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md hover:shadow-lg transition-all">
                         Get Started
                     </a>
@@ -1733,6 +1784,13 @@
         }, { threshold: 0.15 });
 
         document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+    </script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js');
+        }
     </script>
 </body>
 

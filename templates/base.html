@@ -6,6 +6,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ title|default('Home') }}{% endblock %} — {{ app_name }}</title>
 
+    <!-- Favicon -->
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+
+    <!-- SEO & PWA -->
+    <meta name="description" content="Kipta — AI-powered personal finance intelligence. Turn bank statements into insights, track spending, and get financial guidance.">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.svg">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <!-- Canonical -->
+    <link rel="canonical" href="{{ site_url }}{{ request.url.path }}">
+
+    <!-- OpenGraph -->
+    <meta property="og:title" content="{% block og_title %}{{ title|default('Home') }} — {{ app_name }}{% endblock %}">
+    <meta property="og:description" content="AI-powered personal finance intelligence. Turn your bank statements into structured data, clear insights, and financial guidance.">
+    <meta property="og:url" content="{{ site_url }}{{ request.url.path }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Kipta">
+    <meta property="og:image" content="{{ site_url }}/static/og-image.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{{ title|default('Home') }} — {{ app_name }}">
+    <meta name="twitter:description" content="AI-powered personal finance intelligence. Turn your bank statements into insights.">
+    <meta name="twitter:image" content="{{ site_url }}/static/og-image.png">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Kipta",
+      "url": "{{ site_url }}",
+      "description": "AI-powered personal finance intelligence platform.",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+    </script>
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -130,10 +172,30 @@
                         <i class="fas fa-tachometer-alt text-xs nav-icon"></i>
                         <span>Dashboard</span>
                     </a>
+                    <a href="/daily-expenses" data-nav="/daily-expenses"
+                        class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
+                        <i class="fas fa-wallet text-xs nav-icon"></i>
+                        <span>Daily Expenses</span>
+                    </a>
                     <a href="/upload" data-nav="/upload"
                         class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
                         <i class="fas fa-cloud-upload-alt text-xs nav-icon"></i>
                         <span>Upload</span>
+                    </a>
+                    <a href="/liabilities/dashboard" data-nav="/liabilities/dashboard"
+                        class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
+                        <i class="fas fa-tasks text-xs nav-icon"></i>
+                        <span>Liabilities</span>
+                    </a>
+                    <a href="/daily-income" data-nav="/daily-income"
+                        class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
+                        <i class="fas fa-hand-holding-usd text-xs nav-icon"></i>
+                        <span>Income</span>
+                    </a>
+                    <a href="/reports" data-nav="/reports"
+                        class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
+                        <i class="fas fa-chart-pie text-xs nav-icon"></i>
+                        <span>Reports</span>
                     </a>
                     <a href="/statements" data-nav="/statements"
                         class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
@@ -145,35 +207,16 @@
                         <i class="fas fa-receipt text-xs nav-icon"></i>
                         <span>Transactions</span>
                     </a>
-                    <a href="/reports" data-nav="/reports"
-                        class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
-                        <i class="fas fa-chart-pie text-xs nav-icon"></i>
-                        <span>Reports</span>
-                    </a>
                     <a href="/accounts" data-nav="/accounts"
                         class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
                         <i class="fas fa-id-card text-xs nav-icon"></i>
                         <span>Accounts</span>
                     </a>
                     <a href="/advisor" data-nav="/advisor"
-                        class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
-                        <i class="fas fa-robot text-xs nav-icon"></i>
+                        class="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-sm hover:shadow-md transition-all">
+                        <i class="fas fa-wand-magic-sparkles text-xs"></i>
                         <span>Advisor</span>
-                    </a>
-                    <a href="/daily-expenses" data-nav="/daily-expenses"
-                        class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
-                        <i class="fas fa-wallet text-xs nav-icon"></i>
-                        <span>Daily Expenses</span>
-                    </a>
-                    <a href="/daily-income" data-nav="/daily-income"
-                        class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
-                        <i class="fas fa-hand-holding-usd text-xs nav-icon"></i>
-                        <span>Income</span>
-                    </a>
-                    <a href="/liabilities/dashboard" data-nav="/liabilities/dashboard"
-                        class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
-                        <i class="fas fa-tasks text-xs nav-icon"></i>
-                        <span>Liabilities</span>
+                        <span class="text-[8px] font-bold uppercase tracking-wider bg-white/20 rounded px-1 py-px leading-none">AI</span>
                     </a>
                 </nav>
                 {% endif %}
@@ -228,8 +271,9 @@
                     <i class="fas fa-id-card w-4 text-center nav-icon"></i>Accounts
                 </a>
                 <a href="/advisor" data-nav="/advisor"
-                    class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600">
-                    <i class="fas fa-robot w-4 text-center nav-icon"></i>Advisor
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 my-1">
+                    <i class="fas fa-wand-magic-sparkles w-4 text-center"></i>Advisor
+                    <span class="ml-auto text-[8px] font-bold uppercase tracking-wider bg-white/20 rounded px-1.5 py-0.5 leading-none">AI</span>
                 </a>
                 <a href="/daily-expenses" data-nav="/daily-expenses"
                     class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600">
@@ -283,6 +327,12 @@
                         link.classList.add('active');
                     }
                 });
+                // Highlight Advisor button (not a .nav-link)
+                document.querySelectorAll('[data-nav="/advisor"]').forEach(link => {
+                    if (path === '/advisor') {
+                        link.classList.add('ring-2', 'ring-white/50');
+                    }
+                });
 
                 // Mobile menu toggle
                 const btn = document.getElementById('mobileMenuBtn');
@@ -305,28 +355,35 @@
                     btn.querySelector('i').className = 'fas fa-bars text-lg';
                 }));
             })();
-            // Logout function
-            async function logout() {
-                try {
-                    const response = await fetch('/api/auth/logout', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
+        // Logout function
+        async function logout() {
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
 
-                    if (response.ok) {
-                        window.location.href = '/login';
-                    } else {
-                        console.error('Logout failed');
-                        // Still redirect to login even if logout fails
-                        window.location.href = '/login';
-                    }
-                } catch (error) {
-                    console.error('Logout error:', error);
+                if (response.ok) {
+                    window.location.href = '/login';
+                } else {
+                    console.error('Logout failed');
+                    // Still redirect to login even if logout fails
                     window.location.href = '/login';
                 }
-            }    </script>
+            } catch (error) {
+                console.error('Logout error:', error);
+                window.location.href = '/login';
+            }
+        }    </script>
 
     {% block extra_scripts %}{% endblock %}
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js');
+        }
+    </script>
 </body>
 
 </html>

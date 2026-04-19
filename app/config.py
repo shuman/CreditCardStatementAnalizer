@@ -141,6 +141,9 @@ class Settings(BaseSettings):
 
     # Frontend URL (for password reset links)
     frontend_url: str = "http://localhost:8000"
+
+    # Public site URL (for SEO canonical URLs, OG tags)
+    site_url: str = "https://kipta.app"
     password_reset_token_expire_minutes: int = 60  # 1 hour
 
     @property
