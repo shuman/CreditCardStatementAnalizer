@@ -102,11 +102,22 @@ async def _daily_reward_check():
     try:
         from app.database import AsyncSessionLocal
         from app.services.advisor import AdvisorService
+        from app.models import User
+        from sqlalchemy import select
 
         async with AsyncSessionLocal() as db:
+            # Fetch all active users to run analysis for each
+            result = await db.execute(select(User).where(User.is_active == True))
+            users = result.scalars().all()
+            
+            total_insights = 0
             advisor = AdvisorService(db)
-            insights = await advisor._check_reward_expiry()
-            logger.info(f"Reward check: {len(insights)} alerts generated")
+            
+            for user in users:
+                insights = await advisor._check_reward_expiry(user_id=user.id)
+                total_insights += len(insights)
+                
+            logger.info(f"Reward check: {total_insights} alerts generated across {len(users)} users")
     except Exception as e:
         logger.error(f"Daily reward check failed: {e}")
 
@@ -121,12 +132,28 @@ async def _monthly_report_job():
     try:
         from app.database import AsyncSessionLocal
         from app.services.advisor import AdvisorService
+        from app.models import User
+        from sqlalchemy import select
 
         async with AsyncSessionLocal() as db:
+            # Fetch all active users to run analysis for each
+            result = await db.execute(select(User).where(User.is_active == True))
+            users = result.scalars().all()
+            
+            total_insights = 0
             advisor = AdvisorService(db)
-            # Generate full analysis for all accounts
-            insights = await advisor.analyze_period(period_from, period_to, account_id=None)
-            logger.info(f"Monthly report job: {len(insights)} insights generated")
+            
+            for user in users:
+                # Generate full analysis for all accounts
+                insights = await advisor.analyze_period(
+                    user_id=user.id,
+                    period_from=period_from,
+                    period_to=period_to,
+                    account_id=None
+                )
+                total_insights += len(insights)
+                
+            logger.info(f"Monthly report job: {total_insights} insights generated across {len(users)} users")
     except Exception as e:
         logger.error(f"Monthly report job failed: {e}")
 
@@ -142,17 +169,28 @@ async def _monthly_advisor_report_job():
     try:
         from app.database import AsyncSessionLocal
         from app.services.advisor import AdvisorService
+        from app.models import User
+        from sqlalchemy import select
 
         async with AsyncSessionLocal() as db:
+            # Fetch all active users to run analysis for each
+            result = await db.execute(select(User).where(User.is_active == True))
+            users = result.scalars().all()
+            
+            reports_generated = 0
             advisor = AdvisorService(db)
-            report = await advisor.generate_advisor_report(year, month, account_id=None)
-            if report:
-                logger.info(
-                    f"Advisor report generated: score={report.score}, "
-                    f"personality={report.personality_type}"
+            
+            for user in users:
+                report = await advisor.generate_advisor_report(
+                    user_id=user.id,
+                    year=year,
+                    month=month,
+                    account_id=None
                 )
-            else:
-                logger.warning(f"No advisor report generated for {year}-{month:02d} (no data?)")
+                if report:
+                    reports_generated += 1
+                    
+            logger.info(f"Monthly advisor report job: {reports_generated} reports generated across {len(users)} users")
     except Exception as e:
         logger.error(f"Monthly advisor report job failed: {e}")
 
@@ -163,16 +201,28 @@ async def _run_post_upload_analysis(statement_id: int, period_from: date, period
     try:
         from app.database import AsyncSessionLocal
         from app.services.advisor import AdvisorService
+        from app.models import Statement
+        from sqlalchemy import select
 
         async with AsyncSessionLocal() as db:
+            # Fetch the user_id from the statement
+            result = await db.execute(select(Statement).where(Statement.id == statement_id))
+            statement = result.scalar_one_or_none()
+            if not statement:
+                logger.error(f"Statement {statement_id} not found for post-upload analysis")
+                return
+                
+            user_id = statement.user_id
             advisor = AdvisorService(db)
+            
             # Run only the fast, token-free insights
             insights = []
-            insights.extend(await advisor._detect_overspending(period_from, period_to, None))
-            insights.extend(await advisor._check_reward_expiry())
-            insights.extend(await advisor._check_budget_breaches(period_from, period_to))
+            insights.extend(await advisor._detect_overspending(user_id, period_from, period_to, None))
+            insights.extend(await advisor._check_reward_expiry(user_id))
+            insights.extend(await advisor._check_budget_breaches(user_id, period_from, period_to))
+            
             logger.info(
-                f"Post-upload analysis for statement {statement_id}: "
+                f"Post-upload analysis for statement {statement_id} (user {user_id}): "
                 f"{len(insights)} insights"
             )
     except Exception as e:

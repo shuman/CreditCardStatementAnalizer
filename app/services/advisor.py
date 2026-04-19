@@ -12,6 +12,7 @@ import json
 import logging
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+import uuid
 from typing import Optional, List, Dict, Any
 
 from sqlalchemy import select, func, and_
@@ -146,6 +147,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
             return None
 
         insight = Insight(
+            uuid=str(uuid.uuid4()),
             user_id=user_id,
             insight_type="monthly_report",
             scope="monthly",
@@ -193,6 +195,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
                 increase_pct = ((float(current_amount) - monthly_avg) / monthly_avg) * 100
                 if increase_pct > 20 and float(current_amount) > 500:  # BDT 500 threshold
                     insight = Insight(
+                        uuid=str(uuid.uuid4()),
                         user_id=user_id,
                         insight_type="overspending",
                         scope="monthly",
@@ -270,6 +273,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
         currencies = list({t.original_currency for t in foreign_txns})
 
         insight = Insight(
+            uuid=str(uuid.uuid4()),
             user_id=user_id,
             insight_type="fx_cost_report",
             scope="monthly",
@@ -335,6 +339,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
 
         dup_list = "\n".join(f"- **{m.title()}** on {len(a)} cards" for m, a in duplicates.items())
         insight = Insight(
+            uuid=str(uuid.uuid4()),
             user_id=user_id,
             insight_type="duplicate_subscription",
             scope="monthly",
@@ -385,6 +390,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
                 continue
 
             insight = Insight(
+                uuid=str(uuid.uuid4()),
                 user_id=user_id,
                 insight_type="reward_expiry_alert",
                 scope="monthly",
@@ -452,6 +458,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
                 continue
 
             insight = Insight(
+                uuid=str(uuid.uuid4()),
                 user_id=user_id,
                 insight_type="budget_breach",
                 scope="monthly",
@@ -668,6 +675,7 @@ Keep it friendly, personal, and under 400 words. Use BDT for all amounts."""
 
         # Store as AdvisorReport
         report = AdvisorReport(
+            uuid=str(uuid.uuid4()),
             user_id=user_id,
             year=year,
             month=month,

@@ -2,6 +2,7 @@
 Budgets router — manage monthly spending budgets per category.
 """
 from typing import List, Optional
+import uuid
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -84,6 +85,7 @@ async def create_budget(
         )
 
     budget = Budget(
+        uuid=str(uuid.uuid4()),
         category=body.category,
         subcategory=body.subcategory,
         monthly_limit=Decimal(str(body.monthly_limit)),

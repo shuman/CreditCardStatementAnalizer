@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kipta — AI-Powered Personal Finance Intelligence</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(32px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-up {
+            opacity: 0;
+            transform: translateY(32px);
+        }
+
+        .fade-up.visible {
+            animation: fadeUp 0.7s ease forwards;
+        }
+
+        .preview-frame {
+            overflow: hidden;
+        }
+
+        .preview-content {
+            transform-origin: top left;
+        }
+    </style>
+</head>
+
+<body class="bg-white text-gray-800 font-sans antialiased">
+
+    <!-- ===================== HEADER ===================== -->
+    <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-lg border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="/" class="flex items-center gap-3 group">
+                    <div
+                        class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+                        <i class="fas fa-credit-card text-white text-sm"></i>
+                    </div>
+                    <span class="text-xl font-bold text-gray-900">Kipta</span>
+                </a>
+                <div class="flex items-center gap-4">
+                    <a href="/login"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md hover:shadow-lg transition-all">
+                        Get Started
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===================== HERO ===================== -->
+    <section class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950">
+        <div class="absolute inset-0 opacity-[0.07]"
+            style="background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.4) 1px,transparent 0);background-size:40px 40px">
+        </div>
+
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12 lg:pt-32 lg:pb-20">
+            <div class="text-center max-w-4xl mx-auto">
+                <h1 class="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-white tracking-tight leading-[1.1]">
+                    Understand your<br>
+                    money with
+                    <span class="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">AI</span>
+                </h1>
+                <p class="mt-6 text-lg sm:text-xl lg:text-2xl text-indigo-100/70 max-w-3xl mx-auto leading-relaxed">
+                    Kipta App turns your bank and credit card statements into structured data, clear
+                    insights, and thoughtful financial guidance. No manual tracking, no spreadsheets.
+                </p>
+                <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <a href="#features"
+                        class="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-semibold text-indigo-900 bg-white hover:bg-indigo-50 shadow-xl hover:shadow-2xl transition-all">
+                        Explore Features
+                    </a>
+                    <a href="#reports"
+                        class="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-semibold text-white border-2 border-white/20 hover:border-white/40 hover:bg-white/5 transition-all">
+                        <i class="fas fa-chart-bar text-sm opacity-70"></i>
+                        View Sample Report
+                    </a>
+                </div>
+                <p class="mt-8 text-sm text-indigo-200/40">
+                    <i class="fas fa-shield-alt mr-1"></i>
+                    Privacy-first by design. Your data stays under your control.
+                </p>
+            </div>
+
+            <!-- ==================== DASHBOARD PREVIEW ==================== -->
+            <div class="mt-14 lg:mt-20 max-w-5xl mx-auto">
+                <div class="rounded-2xl overflow-hidden shadow-2xl shadow-indigo-500/20 border border-white/10">
+                    <!-- Browser bar -->
+                    <div class="flex items-center gap-2 px-4 py-2.5 bg-white border-b border-gray-100">
+                        <div class="flex gap-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                        </div>
+                        <div class="flex-1 mx-3">
+                            <div class="bg-gray-100 rounded px-3 py-1 text-[10px] text-gray-400 w-44">
+                                kipta.app/dashboard</div>
+                        </div>
+                    </div>
+                    <!-- Scaled dashboard -->
+                    <div class="preview-frame bg-slate-50" style="height:370px">
+                        <div class="preview-content p-4 space-y-3" style="transform:scale(0.52);width:192.3%">
+                            <!-- KPI cards -->
+                            <div class="grid grid-cols-4 gap-3">
+                                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                                            <i class="fas fa-wallet text-indigo-500 text-xs"></i>
+                                        </div>
+                                        <span class="text-xs text-gray-400">Total Spent</span>
+                                    </div>
+                                    <p class="text-xl font-bold text-gray-900">5,52,000</p>
+                                    <p class="text-xs text-gray-400 mt-1">12 months &middot; BDT</p>
+                                </div>
+                                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                                            <i class="fas fa-chart-line text-emerald-500 text-xs"></i>
+                                        </div>
+                                        <span class="text-xs text-gray-400">Avg Monthly</span>
+                                    </div>
+                                    <p class="text-xl font-bold text-gray-900">46,000</p>
+                                    <p class="text-xs text-gray-400 mt-1">BDT per month</p>
+                                </div>
+                                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+                                            <i class="fas fa-arrow-up text-amber-500 text-xs"></i>
+                                        </div>
+                                        <span class="text-xs text-gray-400">Highest Month</span>
+                                    </div>
+                                    <p class="text-xl font-bold text-gray-900">58,000</p>
+                                    <p class="text-xs text-gray-400 mt-1">December</p>
+                                </div>
+                                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+                                            <i class="fas fa-receipt text-violet-500 text-xs"></i>
+                                        </div>
+                                        <span class="text-xs text-gray-400">Transactions</span>
+                                    </div>
+                                    <p class="text-xl font-bold text-gray-900">847</p>
+                                    <p class="text-xs text-gray-400 mt-1">Total count</p>
+                                </div>
+                            </div>
+                            <!-- Charts row -->
+                            <div class="grid grid-cols-5 gap-3">
+                                <div class="col-span-3 bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <div class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+                                            <i class="fas fa-chart-bar text-indigo-500 text-xs"></i>
+                                        </div>
+                                        <span class="text-sm font-semibold text-gray-800">12-Month Spending
+                                            Trend</span>
+                                    </div>
+                                    <div style="height:200px"><canvas id="heroBarChart"></canvas></div>
+                                </div>
+                                <div class="col-span-2 bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <div class="w-7 h-7 rounded-lg bg-cyan-50 flex items-center justify-center">
+                                            <i class="fas fa-chart-pie text-cyan-500 text-xs"></i>
+                                        </div>
+                                        <span class="text-sm font-semibold text-gray-800">Category Breakdown</span>
+                                    </div>
+                                    <div style="height:200px"><canvas id="heroDoughnutChart"></canvas></div>
+                                </div>
+                            </div>
+                            <!-- More charts (partially clipped) -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4"
+                                    style="height:240px">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <div class="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center">
+                                            <i class="fas fa-store text-amber-500 text-xs"></i>
+                                        </div>
+                                        <span class="text-sm font-semibold text-gray-800">Top 10 Merchants</span>
+                                    </div>
+                                    <div style="height:190px"><canvas id="heroMerchantChart"></canvas></div>
+                                </div>
+                                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4"
+                                    style="height:240px">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <div class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+                                            <i class="fas fa-balance-scale text-emerald-500 text-xs"></i>
+                                        </div>
+                                        <span class="text-sm font-semibold text-gray-800">Income vs Expenses</span>
+                                    </div>
+                                    <div style="height:190px"><canvas id="heroIncomeChart"></canvas></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent"></div>
+    </section>
+
+    <!-- ===================== CORE VALUE ===================== -->
+    <section class="py-20 lg:py-28 bg-white fade-up">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+                From financial data<br>to real understanding
+            </h2>
+            <div class="mt-8 space-y-5 text-lg sm:text-xl text-gray-500 leading-relaxed">
+                <p>Most tools help you record transactions.</p>
+                <p class="text-2xl sm:text-3xl font-semibold text-gray-900">
+                    Kipta App focuses on helping you<br>understand them.
+                </p>
+                <p>It reads your financial data, identifies patterns, and presents insights in a way
+                    that is easy to follow and act on.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== HOW IT WORKS ===================== -->
+    <section class="py-20 lg:py-28 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 fade-up">
+                <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">How it works</h2>
+                <p class="mt-4 text-lg text-gray-500">Four steps from raw data to financial clarity</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+                <!-- Step 1 -->
+                <div class="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow fade-up">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg">
+                        1</div>
+                    <h3 class="mt-6 text-xl font-bold text-gray-900">Extract</h3>
+                    <p class="mt-3 text-gray-500 leading-relaxed">Upload your bank or card statements. Kipta App reads
+                        the PDF and converts it into structured transactions.</p>
+                </div>
+                <!-- Step 2 -->
+                <div class="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow fade-up">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-lg">
+                        2</div>
+                    <h3 class="mt-6 text-xl font-bold text-gray-900">Categorize</h3>
+                    <p class="mt-3 text-gray-500 leading-relaxed">Each transaction is grouped into meaningful
+                        categories automatically, without manual tagging.</p>
+                </div>
+                <!-- Step 3 -->
+                <div class="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow fade-up">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-lg">
+                        3</div>
+                    <h3 class="mt-6 text-xl font-bold text-gray-900">Analyze</h3>
+                    <p class="mt-3 text-gray-500 leading-relaxed">Kipta App examines your financial activity over
+                        time — spending patterns, income changes, cash flow, and potential risks.</p>
+                </div>
+                <!-- Step 4 -->
+                <div class="bg-white rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow fade-up">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 font-bold text-lg">
+                        4</div>
+                    <h3 class="mt-6 text-xl font-bold text-gray-900">Advise</h3>
+                    <p class="mt-3 text-gray-500 leading-relaxed">Based on your data, Kipta App provides clear
+                        observations and practical suggestions you can consider.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== AI REPORTS ===================== -->
+    <section id="reports" class="py-20 lg:py-28 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+                <div class="fade-up">
+                    <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
+                        A structured view of your<br>financial situation
+                    </h2>
+                    <p class="mt-6 text-lg text-gray-500 leading-relaxed">
+                        Kipta App generates a detailed report that brings together multiple aspects of
+                        your finances:
+                    </p>
+                    <ul class="mt-6 space-y-3">
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-check-circle text-indigo-500 mt-1 shrink-0"></i>
+                            <span class="text-gray-600">Financial health indicators</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-check-circle text-indigo-500 mt-1 shrink-0"></i>
+                            <span class="text-gray-600">Spending behavior insights</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-check-circle text-indigo-500 mt-1 shrink-0"></i>
+                            <span class="text-gray-600">Income stability overview</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-check-circle text-indigo-500 mt-1 shrink-0"></i>
+                            <span class="text-gray-600">Areas that may need attention</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-check-circle text-indigo-500 mt-1 shrink-0"></i>
+                            <span class="text-gray-600">Opportunities to improve savings</span>
+                        </li>
+                    </ul>
+                    <p class="mt-6 text-gray-400 italic">
+                        Coherent and understandable, not fragmented.
+                    </p>
+                </div>
+
+                <!-- ==================== REPORT CARDS PREVIEW ==================== -->
+                <div class="fade-up">
+                    <div class="rounded-2xl overflow-hidden shadow-2xl border border-gray-200">
+                        <div class="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                            <div class="flex gap-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                            </div>
+                            <div class="flex-1 mx-3">
+                                <div class="bg-gray-100 rounded px-3 py-1 text-[10px] text-gray-400 w-44">
+                                    kipta.app/reports</div>
+                            </div>
+                        </div>
+                        <div class="preview-frame bg-slate-50" style="height:370px">
+                            <div class="preview-content p-3" style="transform:scale(0.52);width:192.3%">
+                                <!-- Filter pills -->
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span
+                                        class="px-3 py-1 rounded-full text-xs font-medium bg-indigo-600 text-white">All</span>
+                                    <span
+                                        class="px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-500 border border-gray-200">Spending</span>
+                                    <span
+                                        class="px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-500 border border-gray-200">Income</span>
+                                    <span
+                                        class="px-3 py-1 rounded-full text-xs font-medium bg-white text-gray-500 border border-gray-200">Health</span>
+                                </div>
+                                <!-- Report cards grid -->
+                                <div class="grid grid-cols-2 gap-3">
+                                    <!-- Card: Monthly Breakdown -->
+                                    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col"
+                                        style="height:340px">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <div
+                                                class="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">
+                                                <i class="fas fa-chart-pie text-indigo-500 text-xs"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs font-semibold text-gray-800">Monthly Breakdown</p>
+                                                <p class="text-[10px] text-gray-400">6 categories &middot;
+                                                    5,52,000 BDT</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex-1 min-h-0"><canvas id="reportDoughnut"></canvas>
+                                        </div>
+                                        <div class="pt-2 border-t border-gray-50 text-[10px] text-gray-400">
+                                            Food & Dining is your largest spending category at 28%
+                                        </div>
+                                    </div>
+                                    <!-- Card: Income vs Expenses -->
+                                    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col"
+                                        style="height:340px">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <div
+                                                class="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center">
+                                                <i class="fas fa-balance-scale text-green-500 text-xs"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs font-semibold text-gray-800">Income vs Expenses</p>
+                                                <p class="text-[10px] text-gray-400">Net flow: +1,28,000 BDT</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex-1 min-h-0"><canvas id="reportBarChart"></canvas>
+                                        </div>
+                                        <div class="pt-2 border-t border-gray-50 text-[10px] text-gray-400">
+                                            Positive cash flow in 5 of 6 months
+                                        </div>
+                                    </div>
+                                    <!-- Card: Health Score (partially clipped) -->
+                                    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col"
+                                        style="height:340px">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <div
+                                                class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+                                                <i class="fas fa-heartbeat text-emerald-500 text-xs"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs font-semibold text-gray-800">Health Score</p>
+                                                <p class="text-[10px] text-gray-400">Good &middot; 72/100</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex-1 flex items-center justify-center">
+                                            <div class="relative w-40 h-20">
+                                                <svg viewBox="0 0 200 100" class="w-full">
+                                                    <path d="M 20 90 A 80 80 0 0 1 180 90" fill="none" stroke="#e5e7eb"
+                                                        stroke-width="12" stroke-linecap="round" />
+                                                    <path d="M 20 90 A 80 80 0 0 1 180 90" fill="none" stroke="#10b981"
+                                                        stroke-width="12" stroke-linecap="round" stroke-dasharray="251"
+                                                        stroke-dashoffset="70" />
+                                                </svg>
+                                                <div class="absolute inset-0 flex items-end justify-center pb-1">
+                                                    <span class="text-2xl font-bold text-emerald-600">72</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Card: Subscriptions (partially clipped) -->
+                                    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4 flex flex-col"
+                                        style="height:340px">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <div class="w-7 h-7 rounded-lg bg-rose-50 flex items-center justify-center">
+                                                <i class="fas fa-sync-alt text-rose-500 text-xs"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs font-semibold text-gray-800">Subscriptions</p>
+                                                <p class="text-[10px] text-gray-400">7 active &middot; 8,450
+                                                    BDT/mo</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== WHAT YOU CAN LEARN ===================== -->
+    <section class="py-20 lg:py-28 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+                <!-- ==================== ADVISOR PREVIEW ==================== -->
+                <div class="order-2 lg:order-1 fade-up">
+                    <div class="rounded-2xl overflow-hidden shadow-2xl border border-gray-200">
+                        <div class="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                            <div class="flex gap-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                            </div>
+                            <div class="flex-1 mx-3">
+                                <div class="bg-gray-100 rounded px-3 py-1 text-[10px] text-gray-400 w-44">
+                                    kipta.app/advisor</div>
+                            </div>
+                        </div>
+                        <div class="preview-frame bg-slate-50" style="height:400px">
+                            <div class="preview-content p-5 space-y-4" style="transform:scale(0.52);width:192.3%">
+                                <!-- Diagnosis Banner -->
+                                <div class="bg-gradient-to-r from-slate-900 to-indigo-900 rounded-2xl p-5 text-white shadow-lg">
+                                    <p class="text-sm leading-relaxed font-medium">You're managing finances reasonably well, but dining and subscription costs are silently draining your savings potential. Small adjustments could free up BDT 12,000+ per month.</p>
+                                    <div class="flex items-center gap-3 mt-3 text-xs text-indigo-200">
+                                        <span>March 2026 Report</span>
+                                    </div>
+                                </div>
+
+                                <!-- Health Score + Personality (side by side) -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <!-- Health Score -->
+                                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                        <h3 class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Financial Health Score</h3>
+                                        <div class="flex items-center gap-4">
+                                            <!-- SVG Gauge -->
+                                            <div class="flex-shrink-0">
+                                                <svg width="120" height="68" viewBox="0 0 200 110">
+                                                    <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#e2e8f0" stroke-width="16" stroke-linecap="round"/>
+                                                    <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#6366f1" stroke-width="16" stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="75"/>
+                                                </svg>
+                                                <div class="text-center -mt-5">
+                                                    <span class="text-2xl font-bold text-indigo-600">70</span>
+                                                    <div class="text-[10px] text-gray-500">Good</div>
+                                                </div>
+                                            </div>
+                                            <!-- Score bars -->
+                                            <div class="flex-1 space-y-2">
+                                                <div>
+                                                    <div class="flex justify-between text-[10px] mb-0.5"><span class="text-gray-600">Spending</span><span class="font-semibold">15/20</span></div>
+                                                    <div class="h-1.5 bg-gray-100 rounded-full"><div class="h-1.5 bg-indigo-500 rounded-full" style="width:75%"></div></div>
+                                                </div>
+                                                <div>
+                                                    <div class="flex justify-between text-[10px] mb-0.5"><span class="text-gray-600">Savings</span><span class="font-semibold">13/20</span></div>
+                                                    <div class="h-1.5 bg-gray-100 rounded-full"><div class="h-1.5 bg-emerald-500 rounded-full" style="width:65%"></div></div>
+                                                </div>
+                                                <div>
+                                                    <div class="flex justify-between text-[10px] mb-0.5"><span class="text-gray-600">Consistency</span><span class="font-semibold">14/20</span></div>
+                                                    <div class="h-1.5 bg-gray-100 rounded-full"><div class="h-1.5 bg-amber-500 rounded-full" style="width:70%"></div></div>
+                                                </div>
+                                                <div>
+                                                    <div class="flex justify-between text-[10px] mb-0.5"><span class="text-gray-600">Discipline</span><span class="font-semibold">12/20</span></div>
+                                                    <div class="h-1.5 bg-gray-100 rounded-full"><div class="h-1.5 bg-rose-500 rounded-full" style="width:60%"></div></div>
+                                                </div>
+                                                <div>
+                                                    <div class="flex justify-between text-[10px] mb-0.5"><span class="text-gray-600">Income</span><span class="font-semibold">16/20</span></div>
+                                                    <div class="h-1.5 bg-gray-100 rounded-full"><div class="h-1.5 bg-teal-500 rounded-full" style="width:80%"></div></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 text-center">
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700"><i class="fas fa-arrow-up text-[8px]"></i> +5 from last month</span>
+                                        </div>
+                                    </div>
+                                    <!-- Money Personality -->
+                                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                                        <h3 class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Your Money Personality</h3>
+                                        <div class="text-center mb-3">
+                                            <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-base font-bold bg-indigo-50 text-indigo-700">The Balanced Spender</span>
+                                        </div>
+                                        <p class="text-xs text-gray-600 leading-relaxed">You maintain a reasonable balance between spending and saving, but tend to overspend on dining and subscriptions when stressed. Setting firm budgets in these categories could shift you toward a saver profile.</p>
+                                    </div>
+                                </div>
+
+                                <!-- Behavioral Insights (3-col) -->
+                                <div>
+                                    <h3 class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                        <i class="fas fa-magnifying-glass-chart text-indigo-400 mr-1"></i> Behavioral Insights
+                                    </h3>
+                                    <div class="grid grid-cols-3 gap-3">
+                                        <div class="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+                                            <div class="flex items-center gap-2 mb-1.5">
+                                                <div class="w-6 h-6 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0"><i class="fas fa-utensils text-indigo-500 text-[10px]"></i></div>
+                                                <h4 class="text-[11px] font-semibold text-gray-800">Dining Dominance</h4>
+                                            </div>
+                                            <p class="text-[10px] text-gray-500 leading-relaxed">32% of monthly spend goes to restaurants — highest category by far.</p>
+                                        </div>
+                                        <div class="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+                                            <div class="flex items-center gap-2 mb-1.5">
+                                                <div class="w-6 h-6 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0"><i class="fas fa-piggy-bank text-emerald-500 text-[10px]"></i></div>
+                                                <h4 class="text-[11px] font-semibold text-gray-800">Savings Dip</h4>
+                                            </div>
+                                            <p class="text-[10px] text-gray-500 leading-relaxed">Savings rate dropped from 18% to 12% compared to last month.</p>
+                                        </div>
+                                        <div class="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+                                            <div class="flex items-center gap-2 mb-1.5">
+                                                <div class="w-6 h-6 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0"><i class="fas fa-repeat text-amber-500 text-[10px]"></i></div>
+                                                <h4 class="text-[11px] font-semibold text-gray-800">Recurring Creep</h4>
+                                            </div>
+                                            <p class="text-[10px] text-gray-500 leading-relaxed">Subscription costs grew 15% over 3 months — 3 services may be unused.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Top 3 Mistakes -->
+                                <div>
+                                    <h3 class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                        <i class="fas fa-triangle-exclamation text-red-400 mr-1"></i> Top 3 Mistakes This Month
+                                    </h3>
+                                    <div class="space-y-2">
+                                        <div class="bg-white rounded-xl p-3 border-l-4 border-l-red-400 border border-gray-100 shadow-sm flex items-start gap-3">
+                                            <div class="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold text-[11px] flex-shrink-0">1</div>
+                                            <div class="flex-1">
+                                                <h4 class="text-xs font-semibold text-gray-800">Overordering Food Delivery</h4>
+                                                <p class="text-[10px] text-gray-500 mt-0.5">14 orders this month vs. 8 average. Peak spending on weekends.</p>
+                                            </div>
+                                            <span class="text-xs font-bold text-red-600 flex-shrink-0">BDT 8,400</span>
+                                        </div>
+                                        <div class="bg-white rounded-xl p-3 border-l-4 border-l-red-400 border border-gray-100 shadow-sm flex items-start gap-3">
+                                            <div class="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold text-[11px] flex-shrink-0">2</div>
+                                            <div class="flex-1">
+                                                <h4 class="text-xs font-semibold text-gray-800">Duplicate Subscriptions</h4>
+                                                <p class="text-[10px] text-gray-500 mt-0.5">Both Spotify and YouTube Premium — similar music access.</p>
+                                            </div>
+                                            <span class="text-xs font-bold text-red-600 flex-shrink-0">BDT 450</span>
+                                        </div>
+                                        <div class="bg-white rounded-xl p-3 border-l-4 border-l-red-400 border border-gray-100 shadow-sm flex items-start gap-3">
+                                            <div class="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold text-[11px] flex-shrink-0">3</div>
+                                            <div class="flex-1">
+                                                <h4 class="text-xs font-semibold text-gray-800">Impulse Online Shopping</h4>
+                                                <p class="text-[10px] text-gray-500 mt-0.5">4 unplanned purchases mid-month after salary credit.</p>
+                                            </div>
+                                            <span class="text-xs font-bold text-red-600 flex-shrink-0">BDT 3,200</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Opportunities & Risks (side by side) -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <!-- Opportunities -->
+                                    <div>
+                                        <h3 class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                            <i class="fas fa-seedling text-emerald-400 mr-1"></i> Opportunities
+                                        </h3>
+                                        <div class="space-y-2">
+                                            <div class="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+                                                <div class="flex items-start justify-between gap-2">
+                                                    <h4 class="text-xs font-semibold text-gray-800">Meal Prep Weekends</h4>
+                                                    <span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full flex-shrink-0">Save BDT 4,500/mo</span>
+                                                </div>
+                                                <p class="text-[10px] text-gray-500 mt-1">Replace 6 delivery orders per week with home cooking.</p>
+                                            </div>
+                                            <div class="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+                                                <div class="flex items-start justify-between gap-2">
+                                                    <h4 class="text-xs font-semibold text-gray-800">Cancel Unused Apps</h4>
+                                                    <span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full flex-shrink-0">Save BDT 2,400/mo</span>
+                                                </div>
+                                                <p class="text-[10px] text-gray-500 mt-1">3 subscriptions have no usage in the past 60 days.</p>
+                                            </div>
+                                            <div class="bg-emerald-50 rounded-xl p-2 border border-emerald-200 text-center">
+                                                <span class="text-[11px] font-bold text-emerald-700">Total potential: BDT 12,400/month</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Risk Alerts -->
+                                    <div>
+                                        <h3 class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                            <i class="fas fa-shield-halved text-amber-400 mr-1"></i> Risk Alerts
+                                        </h3>
+                                        <div class="space-y-2">
+                                            <div class="rounded-xl p-3 border-l-4 border-l-red-500 bg-red-50 border border-gray-100 shadow-sm">
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-100 text-red-700">High</span>
+                                                    <h4 class="text-xs font-semibold text-gray-800">EMI Coverage Risk</h4>
+                                                </div>
+                                                <p class="text-[10px] text-gray-500">Fixed obligations at 62% of income. Target is below 50%.</p>
+                                            </div>
+                                            <div class="rounded-xl p-3 border-l-4 border-l-amber-400 bg-amber-50 border border-gray-100 shadow-sm">
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Medium</span>
+                                                    <h4 class="text-xs font-semibold text-gray-800">No Emergency Fund</h4>
+                                                </div>
+                                                <p class="text-[10px] text-gray-500">Zero months of expenses saved. Aim for 3 months minimum.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Motivation Banner -->
+                                <div class="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-2xl p-4 text-white shadow-lg">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-rocket text-white text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-[10px] font-semibold uppercase tracking-wider text-teal-100 mb-1">Your Advisor Says</h3>
+                                            <p class="text-xs leading-relaxed font-medium">You're closer to financial freedom than you think. Cutting just 3 habits could boost your savings by 40% next month.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="order-1 lg:order-2 fade-up">
+                    <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
+                        Your personal<br>financial diagnosis
+                    </h2>
+                    <p class="mt-6 text-lg text-gray-500 leading-relaxed">
+                        Every month, the AI Advisor generates a deep report on your finances — with a health score, personality profile, and actionable steps:
+                    </p>
+                    <ul class="mt-8 space-y-5">
+                        <li class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                                <i class="fas fa-gauge-high text-indigo-600"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Financial Health Score</span>
+                                <p class="text-gray-500 text-sm mt-0.5">A 0–100 score based on spending control, savings mindset, consistency, and discipline</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center shrink-0">
+                                <i class="fas fa-user-tag text-purple-600"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Money Personality</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Discover whether you're a Balanced Spender, Conscious Saver, or Impulse Buyer</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                                <i class="fas fa-triangle-exclamation text-red-600"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Top Mistakes &amp; Risks</span>
+                                <p class="text-gray-500 text-sm mt-0.5">The 3 costliest mistakes you made this month, with BDT impact shown</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                                <i class="fas fa-seedling text-emerald-600"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Savings Opportunities</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Specific actions you can take right now, with estimated monthly savings</p>
+                            </div>
+                        </li>
+                    </ul>
+                    <p class="mt-8 text-gray-400 italic">
+                        Powered by Claude Sonnet — your data stays private and reports are cached locally.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== DAILY EXPENSES ===================== -->
+    <section class="py-20 lg:py-28 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+                <div class="fade-up">
+                    <div
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-700 text-sm font-medium mb-4">
+                        <i class="fas fa-wallet"></i>
+                        Daily Expenses
+                    </div>
+                    <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
+                        Track every daily<br>expense in seconds
+                    </h2>
+                    <p class="mt-6 text-lg text-gray-500 leading-relaxed">
+                        Log cash and digital payments as you make them. Kipta's AI handles the
+                        categorization — you just enter the amount and a quick description.
+                    </p>
+                    <ul class="mt-8 space-y-4">
+                        <li class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fas fa-bolt text-blue-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Quick logging</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Just amount and description — done in under 3
+                                    seconds</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fas fa-magic text-indigo-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">AI categorization</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Automatically tags each expense — review and
+                                    confirm with one click</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fas fa-money-check-alt text-green-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">All payment methods</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Cash, bKash, Nagad, Rocket, Card — track them
+                                    all in one place</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fas fa-file-export text-amber-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Export anytime</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Download all data as CSV for your own analysis
+                                    or records</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Daily Expenses Preview -->
+                <div class="fade-up">
+                    <div class="rounded-2xl overflow-hidden shadow-2xl border border-gray-200">
+                        <div class="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                            <div class="flex gap-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                            </div>
+                            <div class="flex-1 mx-3">
+                                <div class="bg-gray-100 rounded px-3 py-1 text-[10px] text-gray-400 w-52">
+                                    kipta.app/daily-expenses</div>
+                            </div>
+                        </div>
+                        <div class="preview-frame bg-slate-50" style="height:370px">
+                            <div class="preview-content p-4 space-y-3" style="transform:scale(0.52);width:192.3%">
+                                <!-- Quick Add card -->
+                                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <div class="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
+                                            <i class="fas fa-plus text-blue-500 text-xs"></i>
+                                        </div>
+                                        <span class="text-sm font-semibold text-gray-800">Add New Expense</span>
+                                    </div>
+                                    <div class="grid grid-cols-6 gap-2">
+                                        <div class="col-span-1">
+                                            <div
+                                                class="bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-xs text-gray-400">
+                                                ৳ 100</div>
+                                        </div>
+                                        <div class="col-span-2">
+                                            <div
+                                                class="bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-xs text-gray-400">
+                                                e.g., Tea, Rickshaw</div>
+                                        </div>
+                                        <div class="col-span-1">
+                                            <div
+                                                class="bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-xs text-gray-600">
+                                                Cash ▾</div>
+                                        </div>
+                                        <div class="col-span-1">
+                                            <div
+                                                class="bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-xs text-gray-600">
+                                                Today</div>
+                                        </div>
+                                        <div class="col-span-1">
+                                            <div
+                                                class="bg-blue-600 rounded-lg px-2 py-2 text-xs text-white text-center font-medium">
+                                                Save</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Recent Entries -->
+                                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <div class="flex items-center gap-2">
+                                            <div
+                                                class="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+                                                <i class="fas fa-clock text-emerald-500 text-xs"></i>
+                                            </div>
+                                            <span class="text-sm font-semibold text-gray-800">Recent Entries</span>
+                                        </div>
+                                        <span class="text-xs text-gray-400">Today &middot; ৳ 945</span>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                                            <div class="flex items-center gap-3">
+                                                <div
+                                                    class="w-6 h-6 rounded bg-emerald-50 flex items-center justify-center">
+                                                    <i class="fas fa-utensils text-emerald-500 text-[9px]"></i>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-900">Tea & Snacks</p>
+                                                    <p class="text-[10px] text-gray-400">10:30 AM &middot; Cash</p>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-xs font-bold text-gray-900">৳ 45</p>
+                                                <span
+                                                    class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Food</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                                            <div class="flex items-center gap-3">
+                                                <div
+                                                    class="w-6 h-6 rounded bg-indigo-50 flex items-center justify-center">
+                                                    <i class="fas fa-car text-indigo-500 text-[9px]"></i>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-900">Auto Rickshaw</p>
+                                                    <p class="text-[10px] text-gray-400">11:15 AM &middot; Cash</p>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-xs font-bold text-gray-900">৳ 80</p>
+                                                <span
+                                                    class="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">Transport</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                                            <div class="flex items-center gap-3">
+                                                <div
+                                                    class="w-6 h-6 rounded bg-emerald-50 flex items-center justify-center">
+                                                    <i class="fas fa-utensils text-emerald-500 text-[9px]"></i>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-900">Lunch at Office</p>
+                                                    <p class="text-[10px] text-gray-400">1:00 PM &middot; bKash</p>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-xs font-bold text-gray-900">৳ 150</p>
+                                                <span
+                                                    class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Food</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                                            <div class="flex items-center gap-3">
+                                                <div
+                                                    class="w-6 h-6 rounded bg-amber-50 flex items-center justify-center">
+                                                    <i class="fas fa-mobile-alt text-amber-500 text-[9px]"></i>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-900">Mobile Recharge</p>
+                                                    <p class="text-[10px] text-gray-400">2:30 PM &middot; bKash</p>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-xs font-bold text-gray-900">৳ 200</p>
+                                                <span
+                                                    class="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Bills</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                                            <div class="flex items-center gap-3">
+                                                <div
+                                                    class="w-6 h-6 rounded bg-purple-50 flex items-center justify-center">
+                                                    <i class="fas fa-shopping-bag text-purple-500 text-[9px]"></i>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-900">Grocery Items</p>
+                                                    <p class="text-[10px] text-gray-400">5:45 PM &middot; Cash</p>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-xs font-bold text-gray-900">৳ 350</p>
+                                                <span
+                                                    class="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700">Shopping</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                                            <div class="flex items-center gap-3">
+                                                <div
+                                                    class="w-6 h-6 rounded bg-rose-50 flex items-center justify-center">
+                                                    <i class="fas fa-first-aid text-rose-500 text-[9px]"></i>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs font-medium text-gray-900">Medicine</p>
+                                                    <p class="text-[10px] text-gray-400">7:00 PM &middot; Cash</p>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-xs font-bold text-gray-900">৳ 120</p>
+                                                <span
+                                                    class="text-[9px] px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700">Health</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Category chart (partially clipped) -->
+                                <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-4"
+                                    style="height:200px">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="w-7 h-7 rounded-lg bg-violet-50 flex items-center justify-center">
+                                            <i class="fas fa-chart-pie text-violet-500 text-xs"></i>
+                                        </div>
+                                        <span class="text-sm font-semibold text-gray-800">Monthly Breakdown</span>
+                                    </div>
+                                    <div style="height:150px"><canvas id="dailyExpDoughnut"></canvas></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== LIABILITIES ===================== -->
+    <section class="py-20 lg:py-28 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+                <!-- Liability Preview -->
+                <div class="order-2 lg:order-1 fade-up">
+                    <div class="rounded-2xl overflow-hidden shadow-2xl border border-gray-200">
+                        <div class="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                            <div class="flex gap-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                            </div>
+                            <div class="flex-1 mx-3">
+                                <div class="bg-gray-100 rounded px-3 py-1 text-[10px] text-gray-400 w-56">
+                                    kipta.app/liabilities/dashboard</div>
+                            </div>
+                        </div>
+                        <div class="preview-frame bg-slate-50" style="height:370px">
+                            <div class="preview-content p-4 space-y-3" style="transform:scale(0.52);width:192.3%">
+                                <!-- Header -->
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-bold text-gray-900">Monthly Liabilities</p>
+                                        <p class="text-[10px] text-gray-400">March 2026</p>
+                                    </div>
+                                    <div
+                                        class="bg-white border border-gray-200 rounded-lg px-2 py-1 flex items-center gap-2">
+                                        <i class="fas fa-chevron-left text-[8px] text-gray-400"></i>
+                                        <span class="text-xs font-semibold text-gray-700">Mar 2026</span>
+                                        <i class="fas fa-chevron-right text-[8px] text-gray-400"></i>
+                                    </div>
+                                </div>
+
+                                <!-- Summary widgets -->
+                                <div class="grid grid-cols-4 gap-2">
+                                    <div
+                                        class="bg-white/80 backdrop-blur-md border border-gray-200/80 rounded-xl p-3 shadow-sm">
+                                        <p class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">TOTAL
+                                            DUE</p>
+                                        <p class="text-lg font-extrabold text-gray-900 mt-1">৳47,400</p>
+                                        <div class="border-t border-gray-100 pt-2 mt-2 flex justify-between">
+                                            <div>
+                                                <p class="text-[8px] text-gray-400">Paid</p>
+                                                <p class="text-[10px] font-bold text-emerald-500">৳20,300</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-[8px] text-gray-400">Remaining</p>
+                                                <p class="text-[10px] font-bold text-rose-500">৳27,100</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="bg-white/80 backdrop-blur-md border border-gray-200/80 rounded-xl p-3 shadow-sm">
+                                        <div class="flex items-center gap-1.5">
+                                            <div class="w-2 h-2 rounded-full bg-rose-500"></div>
+                                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
+                                                PRIMARY
+                                            </p>
+                                        </div>
+                                        <p class="text-lg font-extrabold text-rose-600 mt-1">৳36,500</p>
+                                        <div class="border-t border-gray-100 pt-2 mt-2">
+                                            <p class="text-[10px] font-bold text-emerald-500">৳18,000 paid</p>
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="bg-white/80 backdrop-blur-md border border-gray-200/80 rounded-xl p-3 shadow-sm">
+                                        <div class="flex items-center gap-1.5">
+                                            <div class="w-2 h-2 rounded-full bg-amber-400"></div>
+                                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
+                                                SECONDARY
+                                            </p>
+                                        </div>
+                                        <p class="text-lg font-extrabold text-amber-600 mt-1">৳6,900</p>
+                                        <div class="border-t border-gray-100 pt-2 mt-2">
+                                            <p class="text-[10px] font-bold text-emerald-500">৳1,500 paid</p>
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="bg-white/80 backdrop-blur-md border border-gray-200/80 rounded-xl p-3 shadow-sm">
+                                        <div class="flex items-center gap-1.5">
+                                            <div class="w-2 h-2 rounded-full bg-gray-400"></div>
+                                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
+                                                OPTIONAL
+                                            </p>
+                                        </div>
+                                        <p class="text-lg font-extrabold text-gray-700 mt-1">৳4,000</p>
+                                        <div class="border-t border-gray-100 pt-2 mt-2">
+                                            <p class="text-[10px] font-bold text-emerald-500">৳800 paid</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Table -->
+                                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                    <table class="min-w-full">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th
+                                                    class="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider text-left">
+                                                    Item</th>
+                                                <th
+                                                    class="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider text-left">
+                                                    Priority</th>
+                                                <th
+                                                    class="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider text-right">
+                                                    Amount</th>
+                                                <th
+                                                    class="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider text-center">
+                                                    Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100 text-sm">
+                                            <tr class="bg-gray-50/50">
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900">House Rent
+                                                </td>
+                                                <td class="px-3 py-2"><span
+                                                        class="text-[9px] px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-semibold">Primary</span>
+                                                </td>
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900 text-right">
+                                                    ৳18,000</td>
+                                                <td class="px-3 py-2 text-center"><span
+                                                        class="text-[9px] px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 font-medium"><i
+                                                            class="fas fa-check text-[7px] mr-0.5"></i> Paid</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900">Car EMI</td>
+                                                <td class="px-3 py-2"><span
+                                                        class="text-[9px] px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-semibold">Primary</span>
+                                                </td>
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900 text-right">
+                                                    ৳10,000</td>
+                                                <td class="px-3 py-2 text-center"><span
+                                                        class="text-[9px] px-2 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-100 font-medium">Unpaid</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900">School Fees
+                                                </td>
+                                                <td class="px-3 py-2"><span
+                                                        class="text-[9px] px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-semibold">Primary</span>
+                                                </td>
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900 text-right">
+                                                    ৳8,500</td>
+                                                <td class="px-3 py-2 text-center"><span
+                                                        class="text-[9px] px-2 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-100 font-medium">Unpaid</span>
+                                                </td>
+                                            </tr>
+                                            <tr class="bg-gray-50/50">
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900">Internet Bill
+                                                </td>
+                                                <td class="px-3 py-2"><span
+                                                        class="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold">Secondary</span>
+                                                </td>
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900 text-right">
+                                                    ৳1,500</td>
+                                                <td class="px-3 py-2 text-center"><span
+                                                        class="text-[9px] px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 font-medium"><i
+                                                            class="fas fa-check text-[7px] mr-0.5"></i> Paid</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900">Electricity
+                                                </td>
+                                                <td class="px-3 py-2"><span
+                                                        class="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold">Secondary</span>
+                                                </td>
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900 text-right">
+                                                    ৳4,200</td>
+                                                <td class="px-3 py-2 text-center"><span
+                                                        class="text-[9px] px-2 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200 font-medium">Partial</span>
+                                                </td>
+                                            </tr>
+                                            <tr class="bg-gray-50/50">
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900">Gas Bill</td>
+                                                <td class="px-3 py-2"><span
+                                                        class="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold">Secondary</span>
+                                                </td>
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900 text-right">
+                                                    ৳1,200</td>
+                                                <td class="px-3 py-2 text-center"><span
+                                                        class="text-[9px] px-2 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-100 font-medium">Unpaid</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900">Netflix</td>
+                                                <td class="px-3 py-2"><span
+                                                        class="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">Optional</span>
+                                                </td>
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900 text-right">৳800
+                                                </td>
+                                                <td class="px-3 py-2 text-center"><span
+                                                        class="text-[9px] px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 font-medium"><i
+                                                            class="fas fa-check text-[7px] mr-0.5"></i> Paid</span></td>
+                                            </tr>
+                                            <tr class="bg-gray-50/50">
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900">Gym
+                                                    Membership</td>
+                                                <td class="px-3 py-2"><span
+                                                        class="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">Optional</span>
+                                                </td>
+                                                <td class="px-3 py-2 text-xs font-medium text-gray-900 text-right">
+                                                    ৳3,200</td>
+                                                <td class="px-3 py-2 text-center"><span
+                                                        class="text-[9px] px-2 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-100 font-medium">Unpaid</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                        <tfoot class="bg-gray-50 border-t border-gray-200">
+                                            <tr>
+                                                <td colspan="4"
+                                                    class="px-3 py-2 text-[10px] text-indigo-600 font-medium">
+                                                    <i class="fas fa-plus text-[8px] mr-1"></i> Add new item...
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Liability Description -->
+                <div class="order-1 lg:order-2 fade-up">
+                    <div
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-50 text-rose-700 text-sm font-medium mb-4">
+                        <i class="fas fa-tasks"></i>
+                        Monthly Liabilities
+                    </div>
+                    <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
+                        Never miss a<br>recurring payment
+                    </h2>
+                    <p class="mt-6 text-lg text-gray-500 leading-relaxed">
+                        Track rent, EMIs, school fees, bills, and subscriptions — all your monthly
+                        obligations in one organized view with priority levels and payment status.
+                    </p>
+                    <ul class="mt-8 space-y-4">
+                        <li class="flex items-start gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fas fa-clone text-indigo-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Master templates</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Configure recurring items once — auto-generate
+                                    each month</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fas fa-flag text-rose-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Priority levels</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Primary (must pay), Secondary (important),
+                                    Optional — see what matters first</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fas fa-check-double text-emerald-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Payment tracking</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Mark as Paid, Unpaid, or Partial — always know
+                                    where you stand</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fas fa-sort text-amber-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <span class="text-gray-900 font-medium">Flexible management</span>
+                                <p class="text-gray-500 text-sm mt-0.5">Drag-and-drop reorder, inline editing, add
+                                    one-off items anytime</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== FEATURES ===================== -->
+    <section id="features" class="py-20 lg:py-28 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 fade-up">
+                <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">Features</h2>
+                <p class="mt-4 text-lg text-gray-500">Everything you need to understand your finances</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div
+                    class="group bg-white rounded-2xl p-8 border border-gray-100 hover:border-indigo-100 hover:shadow-lg transition-all fade-up">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+                        <i class="fas fa-file-pdf text-xl"></i>
+                    </div>
+                    <h3 class="mt-6 text-xl font-bold text-gray-900">AI Statement Processing</h3>
+                    <p class="mt-3 text-gray-500 leading-relaxed">Convert PDF statements into structured
+                        financial data.</p>
+                </div>
+                <!-- Feature 2 -->
+                <div
+                    class="group bg-white rounded-2xl p-8 border border-gray-100 hover:border-purple-100 hover:shadow-lg transition-all fade-up">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 group-hover:bg-purple-100 transition-colors">
+                        <i class="fas fa-tags text-xl"></i>
+                    </div>
+                    <h3 class="mt-6 text-xl font-bold text-gray-900">Automatic Categorization</h3>
+                    <p class="mt-3 text-gray-500 leading-relaxed">Transactions are organized into clear
+                        categories without manual work.</p>
+                </div>
+                <!-- Feature 3 -->
+                <div
+                    class="group bg-white rounded-2xl p-8 border border-gray-100 hover:border-green-100 hover:shadow-lg transition-all fade-up">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center text-green-600 group-hover:bg-green-100 transition-colors">
+                        <i class="fas fa-tachometer-alt text-xl"></i>
+                    </div>
+                    <h3 class="mt-6 text-xl font-bold text-gray-900">Financial Dashboard</h3>
+                    <p class="mt-3 text-gray-500 leading-relaxed">A simple overview of income, expenses, and
+                        trends over time.</p>
+                </div>
+                <!-- Feature 4 -->
+                <div
+                    class="group bg-white rounded-2xl p-8 border border-gray-100 hover:border-pink-100 hover:shadow-lg transition-all fade-up">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-pink-50 flex items-center justify-center text-pink-600 group-hover:bg-pink-100 transition-colors">
+                        <i class="fas fa-chart-line text-xl"></i>
+                    </div>
+                    <h3 class="mt-6 text-xl font-bold text-gray-900">AI Reports</h3>
+                    <p class="mt-3 text-gray-500 leading-relaxed">Periodic summaries that explain your
+                        financial behavior.</p>
+                </div>
+                <!-- Feature 5 -->
+                <div
+                    class="group bg-white rounded-2xl p-8 border border-gray-100 hover:border-amber-100 hover:shadow-lg transition-all fade-up">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 group-hover:bg-amber-100 transition-colors">
+                        <i class="fas fa-robot text-xl"></i>
+                    </div>
+                    <h3 class="mt-6 text-xl font-bold text-gray-900">AI Advisor</h3>
+                    <p class="mt-3 text-gray-500 leading-relaxed">Ask questions and explore your financial data
+                        in more depth.</p>
+                </div>
+                <!-- Feature 6 -->
+                <div
+                    class="group bg-white rounded-2xl p-8 border border-gray-100 hover:border-cyan-100 hover:shadow-lg transition-all fade-up">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center text-cyan-600 group-hover:bg-cyan-100 transition-colors">
+                        <i class="fas fa-wallet text-xl"></i>
+                    </div>
+                    <h3 class="mt-6 text-xl font-bold text-gray-900">Expense &amp; Income Tracking</h3>
+                    <p class="mt-3 text-gray-500 leading-relaxed">Track daily cash expenses and income alongside
+                        your digital transactions.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== A COMMON GAP ===================== -->
+    <section class="py-20 lg:py-28 bg-slate-50">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center fade-up">
+            <div
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 text-amber-700 text-sm font-medium mb-6">
+                <i class="fas fa-exclamation-circle"></i>
+                A common gap
+            </div>
+            <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+                Having data is not the same<br>as understanding it
+            </h2>
+            <p class="mt-6 text-lg sm:text-xl text-gray-500 leading-relaxed">
+                Bank apps and statements provide information, but they rarely explain what it means.
+            </p>
+            <p class="mt-4 text-xl sm:text-2xl font-semibold text-gray-700">
+                Kipta App focuses on interpretation, helping you see the bigger picture behind your
+                numbers.
+            </p>
+        </div>
+    </section>
+
+    <!-- ===================== PRIVACY ===================== -->
+    <section class="py-20 lg:py-28 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 fade-up">
+                <div
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-50 text-green-700 text-sm font-medium mb-4">
+                    <i class="fas fa-shield-alt"></i>
+                    Privacy
+                </div>
+                <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900">Designed with control in mind
+                </h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                <div class="text-center fade-up">
+                    <div
+                        class="w-14 h-14 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 mx-auto">
+                        <i class="fas fa-ban text-2xl"></i>
+                    </div>
+                    <h3 class="mt-5 text-lg font-bold text-gray-900">Not sold or shared</h3>
+                    <p class="mt-2 text-gray-500">Your data is never sold or shared with third parties.</p>
+                </div>
+                <div class="text-center fade-up">
+                    <div
+                        class="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 mx-auto">
+                        <i class="fas fa-server text-2xl"></i>
+                    </div>
+                    <h3 class="mt-5 text-lg font-bold text-gray-900">Self-hosting supported</h3>
+                    <p class="mt-2 text-gray-500">Run Kipta App on your own infrastructure if you prefer.</p>
+                </div>
+                <div class="text-center fade-up">
+                    <div
+                        class="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 mx-auto">
+                        <i class="fas fa-user-shield text-2xl"></i>
+                    </div>
+                    <h3 class="mt-5 text-lg font-bold text-gray-900">You stay in control</h3>
+                    <p class="mt-2 text-gray-500">You remain in control of your financial information at all
+                        times.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== BUILT FOR REAL-WORLD DATA ===================== -->
+    <section class="py-20 lg:py-28 bg-slate-50">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center fade-up">
+            <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+                Built for real-world data
+            </h2>
+            <p class="mt-6 text-lg text-gray-500 leading-relaxed">
+                Kipta App works with the kind of financial data people actually have:
+            </p>
+            <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <i class="fas fa-file-pdf text-2xl text-indigo-500 mb-4"></i>
+                    <p class="text-gray-600 font-medium">Bank and card statements in PDF format</p>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <i class="fas fa-money-bill-wave text-2xl text-green-500 mb-4"></i>
+                    <p class="text-gray-600 font-medium">Mixed spending patterns — cash and digital</p>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <i class="fas fa-shuffle text-2xl text-purple-500 mb-4"></i>
+                    <p class="text-gray-600 font-medium">Inconsistent or unstructured records</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== CLOSING CTA ===================== -->
+    <section
+        class="relative py-20 lg:py-28 bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 overflow-hidden">
+        <div class="absolute inset-0 opacity-[0.07]"
+            style="background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.4) 1px,transparent 0);background-size:40px 40px">
+        </div>
+        <div class="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight">
+                A clearer way to look at<br>your finances
+            </h2>
+            <p class="mt-6 text-lg sm:text-xl text-indigo-100/70 leading-relaxed">
+                Kipta App is designed to make financial information easier to understand, so you can
+                make more informed decisions over time.
+            </p>
+            <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="#reports"
+                    class="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-semibold text-indigo-900 bg-white hover:bg-indigo-50 shadow-xl hover:shadow-2xl transition-all">
+                    <i class="fas fa-chart-bar text-sm opacity-70"></i>
+                    View Sample Report
+                </a>
+                <a href="/login"
+                    class="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-semibold text-white border-2 border-white/20 hover:border-white/40 hover:bg-white/5 transition-all">
+                    Get Started
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== FOOTER ===================== -->
+    <footer class="bg-slate-900 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="flex flex-col items-center text-center">
+                <a href="/" class="flex items-center gap-3 mb-4">
+                    <div
+                        class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                        <i class="fas fa-credit-card text-white text-sm"></i>
+                    </div>
+                    <span class="text-lg font-bold text-white">Kipta.app</span>
+                </a>
+                <p class="text-slate-400 text-sm">AI-powered personal finance intelligence</p>
+                <p class="text-slate-500 text-xs mt-1">Simple, clear, and private by design.</p>
+                <p class="text-slate-600 text-xs mt-6">&copy; 2026 Kipta App. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ===================== CHARTS + SCROLL ANIMATIONS ===================== -->
+    <script>
+        // Sample chart data
+        const COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#f97316', '#06b6d4', '#ec4899', '#84cc16', '#14b8a6', '#e11d48', '#7c3aed'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const spending = [45200, 38500, 51800, 41300, 36200, 48700, 55100, 42400, 39600, 47800, 51300, 57800];
+
+        function initPreviewCharts() {
+            // Hero: Monthly Spending Trend
+            new Chart(document.getElementById('heroBarChart'), {
+                type: 'bar',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        data: spending,
+                        backgroundColor: '#6366f1',
+                        borderRadius: 4,
+                        barPercentage: 0.7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { display: false, beginAtZero: true },
+                        x: { ticks: { font: { size: 9 }, color: '#9ca3af' }, grid: { display: false }, border: { display: false } }
+                    }
+                }
+            });
+
+            // Hero: Category Breakdown
+            new Chart(document.getElementById('heroDoughnutChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Food & Dining', 'Shopping', 'Transport', 'Bills', 'Entertainment', 'Others'],
+                    datasets: [{ data: [28, 18, 12, 15, 8, 19], backgroundColor: COLORS.slice(0, 6), borderWidth: 0 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: { legend: { position: 'right', labels: { boxWidth: 8, padding: 8, font: { size: 9 }, color: '#6b7280' } } }
+                }
+            });
+
+            // Reports: Category Spending
+            new Chart(document.getElementById('reportDoughnut'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Food & Dining', 'Shopping', 'Transport', 'Bills', 'Entertainment', 'Others'],
+                    datasets: [{ data: [28, 18, 12, 15, 8, 19], backgroundColor: COLORS.slice(0, 6), borderWidth: 0 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: { legend: { position: 'right', labels: { boxWidth: 7, padding: 6, font: { size: 9 }, color: '#6b7280' } } }
+                }
+            });
+
+            // Reports: Income vs Expenses
+            new Chart(document.getElementById('reportBarChart'), {
+                type: 'bar',
+                data: {
+                    labels: months.slice(0, 6),
+                    datasets: [
+                        { label: 'Income', data: [65000, 62000, 68000, 63000, 67000, 71000], backgroundColor: '#10b981', borderRadius: 3, barPercentage: 0.7 },
+                        { label: 'Expenses', data: spending.slice(0, 6), backgroundColor: '#6366f1', borderRadius: 3, barPercentage: 0.7 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 8, padding: 8, font: { size: 9 }, color: '#6b7280' } } },
+                    scales: {
+                        y: { display: false, beginAtZero: true },
+                        x: { ticks: { font: { size: 9 }, color: '#9ca3af' }, grid: { display: false }, border: { display: false } }
+                    }
+                }
+            });
+
+            // Daily Expenses: Category Breakdown
+            new Chart(document.getElementById('dailyExpDoughnut'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Food & Dining', 'Transport', 'Shopping', 'Bills', 'Health', 'Others'],
+                    datasets: [{ data: [35, 20, 15, 12, 10, 8], backgroundColor: ['#10b981', '#6366f1', '#8b5cf6', '#f59e0b', '#ef4444', '#9ca3af'], borderWidth: 0 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: { legend: { position: 'right', labels: { boxWidth: 7, padding: 6, font: { size: 9 }, color: '#6b7280' } } }
+                }
+            });
+
+            // Hero: Top 10 Merchants (horizontal bar)
+            new Chart(document.getElementById('heroMerchantChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Daraz', 'Chaldal', 'Uber', 'KFC', 'Shwapno', 'BPDB', 'Robi', 'Pathao', 'Bata', 'Aarong'],
+                    datasets: [{
+                        data: [18200, 14800, 12400, 9600, 8900, 7500, 6200, 5800, 4500, 3900],
+                        backgroundColor: '#f59e0b',
+                        borderRadius: 3,
+                        barPercentage: 0.7
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false, beginAtZero: true },
+                        y: { ticks: { font: { size: 8 }, color: '#6b7280' }, grid: { display: false }, border: { display: false } }
+                    }
+                }
+            });
+
+            // Hero: Income vs Expenses (grouped bar + line)
+            new Chart(document.getElementById('heroIncomeChart'), {
+                type: 'bar',
+                data: {
+                    labels: months,
+                    datasets: [
+                        { label: 'Income', data: [65000,62000,68000,63000,67000,71000,69000,74000,72000,68000,75000,78000], backgroundColor: '#10b981', borderRadius: 3, barPercentage: 0.65 },
+                        { label: 'Expenses', data: spending, backgroundColor: '#6366f1', borderRadius: 3, barPercentage: 0.65 },
+                        { type: 'line', label: 'Net Flow', data: [19800,23500,16200,21700,30800,22300,13900,31600,32400,20200,23700,20200], borderColor: '#14b8a6', borderDash: [4,4], borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 8, padding: 8, font: { size: 8 }, color: '#6b7280' } } },
+                    scales: {
+                        y: { display: false, beginAtZero: true },
+                        x: { ticks: { font: { size: 8 }, color: '#9ca3af' }, grid: { display: false }, border: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // Init charts after DOM ready
+        document.addEventListener('DOMContentLoaded', initPreviewCharts);
+
+        // Scroll animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.15 });
+
+        document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+    </script>
+</body>
+
+</html>

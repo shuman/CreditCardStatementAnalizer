@@ -3,10 +3,11 @@ Seed data for financial institutions.
 Called once on startup — idempotent.
 """
 import logging
+import uuid
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import FinancialInstitution
+from app.models import FinancialInstitution, User
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,14 @@ INSTITUTIONS = [
 
 async def seed_institutions(db: AsyncSession):
     """Seed financial_institutions table. Idempotent."""
+    # Get the first available user to "own" these global institution definitions
+    result = await db.execute(select(User).limit(1))
+    first_user = result.scalar_one_or_none()
+    
+    if not first_user:
+        logger.warning("No users found. Cannot seed financial institutions yet.")
+        return
+
     inserted = 0
     for data in INSTITUTIONS:
         existing = await db.execute(
@@ -91,6 +100,8 @@ async def seed_institutions(db: AsyncSession):
             continue
 
         institution = FinancialInstitution(
+            uuid=str(uuid.uuid4()),
+            user_id=first_user.id,
             name=data["name"],
             short_name=data["short_name"],
             country=data["country"],

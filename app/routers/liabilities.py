@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from pydantic import BaseModel
@@ -70,7 +71,11 @@ async def get_templates(db: AsyncSession = Depends(get_db), current_user: User =
 
 @router.post("/api/templates")
 async def create_template(data: TemplateCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    template = LiabilityTemplate(**data.model_dump(), user_id=current_user.id)
+    template = LiabilityTemplate(
+        uuid=str(uuid.uuid4()),
+        **data.model_dump(),
+        user_id=current_user.id
+    )
     db.add(template)
     await db.commit()
     return {"status": "success", "id": template.id}
@@ -102,7 +107,12 @@ async def generate_month(year: int, month: int, db: AsyncSession = Depends(get_d
     active_templates = t_result.scalars().all()
 
     # Create Record
-    record = MonthlyRecord(year=year, month=month, user_id=current_user.id)
+    record = MonthlyRecord(
+        uuid=str(uuid.uuid4()),
+        year=year,
+        month=month,
+        user_id=current_user.id
+    )
     db.add(record)
     await db.commit()
     await db.refresh(record)
@@ -110,6 +120,7 @@ async def generate_month(year: int, month: int, db: AsyncSession = Depends(get_d
     # Create liabilities
     for idx, t in enumerate(active_templates):
         liability = MonthlyLiability(
+            uuid=str(uuid.uuid4()),
             monthly_record_id=record.id,
             template_id=t.id,
             name=t.name,
@@ -183,6 +194,7 @@ async def add_one_off_liability(data: LiabilityCreate, db: AsyncSession = Depend
     next_order = (last_item.sort_order + 1) if last_item else 0
 
     item = MonthlyLiability(
+        uuid=str(uuid.uuid4()),
         monthly_record_id=data.record_id,
         name=data.name,
         amount=data.amount,

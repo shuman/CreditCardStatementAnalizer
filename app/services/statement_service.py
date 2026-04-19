@@ -10,6 +10,7 @@ import os
 import hashlib
 import shutil
 import logging
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Any, Optional, Tuple
@@ -116,6 +117,7 @@ class StatementService:
             if use_claude_vision and settings.anthropic_api_key:
                 try:
                     parsed_data = await self._extract_with_claude_vision(
+                        user_id,
                         working_file,
                         institution,
                         file_hash=file_hash,
@@ -138,14 +140,14 @@ class StatementService:
                 bank_name = parsed_data["metadata"]["bank_name"]
 
             statement_id, stats = await self._store_parsed_data(
-                parsed_data, filename, file_path, file_hash, password,
+                user_id, parsed_data, filename, file_path, file_hash, password,
                 bank_name, account_id, extraction_method
             )
 
             # Store AiExtraction audit record if vision was used
             if extraction_method == "claude_vision" and parsed_data.get("_ai_extraction"):
                 ai_ext_data = parsed_data["_ai_extraction"]
-                await self._store_ai_extraction(statement_id, ai_ext_data, file_hash=file_hash)
+                await self._store_ai_extraction(user_id, statement_id, ai_ext_data, file_hash=file_hash)
 
             return {
                 "statement_id": statement_id,
@@ -427,6 +429,7 @@ class StatementService:
 
     async def _extract_with_claude_vision(
         self,
+        user_id: int,
         pdf_path: str,
         institution=None,
         file_hash: Optional[str] = None,
@@ -443,7 +446,7 @@ class StatementService:
         """
         # ── Cache lookup ──────────────────────────────────────────────
         if file_hash and use_extraction_cache:
-            cached = await self._get_cached_extraction(file_hash)
+            cached = await self._get_cached_extraction(user_id, file_hash)
             if cached:
                 logger.info(
                     f"Cache HIT for file_hash={file_hash[:12]}… "
@@ -463,6 +466,7 @@ class StatementService:
                     still_unmatched = []
                     for card in unmatched:
                         aid, existed, auto_reg = await normalizer._resolve_account(
+                            user_id,
                             card.get("card_number_masked", ""),
                             card.get("cardholder_name", ""),
                         )
@@ -531,7 +535,7 @@ class StatementService:
 
         # 2. Normalize to DB-ready format (pass institution for auto-registration currency)
         normalizer = DataNormalizer(self.db, institution=institution)
-        normalized = await normalizer.normalize(extraction_result, "", "")
+        normalized = await normalizer.normalize(user_id, extraction_result, "", "")
 
         ai_meta = {
             "model_used": extraction_result.model_used,
@@ -550,7 +554,7 @@ class StatementService:
 
         # ── Store in cache ────────────────────────────────────────────
         if file_hash:
-            await self._store_extraction_cache(file_hash, normalized, ai_meta)
+            await self._store_extraction_cache(user_id, file_hash, normalized, ai_meta)
 
         return normalized
 
@@ -558,7 +562,7 @@ class StatementService:
     # Extraction cache helpers
     # ------------------------------------------------------------------
 
-    async def _get_cached_extraction(self, file_hash: str) -> Optional[AiExtraction]:
+    async def _get_cached_extraction(self, user_id: int, file_hash: str) -> Optional[AiExtraction]:
         """
         Return the most recent AiExtraction row for this file_hash that has
         a non-null raw_response (i.e. a complete cached payload).
@@ -566,6 +570,7 @@ class StatementService:
         result = await self.db.execute(
             select(AiExtraction)
             .where(
+                AiExtraction.user_id == user_id,
                 AiExtraction.file_hash == file_hash,
                 AiExtraction.raw_response.isnot(None),
             )
@@ -576,6 +581,7 @@ class StatementService:
 
     async def _store_extraction_cache(
         self,
+        user_id: int,
         file_hash: str,
         parsed_data: Dict[str, Any],
         ai_meta: Dict[str, Any],
@@ -592,6 +598,8 @@ class StatementService:
         )
 
         record = AiExtraction(
+            uuid=str(uuid.uuid4()),
+            user_id=user_id,
             file_hash=file_hash,
             statement_id=None,          # Not linked to a statement yet
             model_used=ai_meta.get("model_used", "claude-sonnet-4-5"),
@@ -663,6 +671,7 @@ class StatementService:
 
     async def _store_parsed_data(
         self,
+        user_id: int,
         parsed_data: Dict[str, Any],
         filename: str,
         file_path: str,
@@ -718,6 +727,8 @@ class StatementService:
             await self.db.flush()
 
         statement = Statement(
+            uuid=str(uuid.uuid4()),
+            user_id=user_id,
             filename=filename,
             pdf_hash=file_hash,
             file_path=file_path,
@@ -750,6 +761,8 @@ class StatementService:
             txn_fields = {k: v for k, v in txn_data.items() if k not in ("account_number", "statement_id", "account_id")}
 
             txn = Transaction(
+                uuid=str(uuid.uuid4()),
+                user_id=user_id,
                 statement_id=statement.id,
                 account_number=txn_account_number,
                 account_id=txn_account_id,
@@ -764,6 +777,8 @@ class StatementService:
         fees_added = 0
         for fee_data in fees:
             fee = Fee(
+                uuid=str(uuid.uuid4()),
+                user_id=user_id,
                 statement_id=statement.id,
                 account_number=statement.account_number,
                 fee_date=statement.statement_date,
@@ -774,17 +789,21 @@ class StatementService:
 
         for interest_data in interest_charges:
             interest = InterestCharge(
+                uuid=str(uuid.uuid4()),
+                user_id=user_id,
                 statement_id=statement.id,
                 account_number=statement.account_number,
                 **interest_data,
             )
             self.db.add(interest)
 
-        await self._store_category_summaries(statement, successfully_added)
+        await self._store_category_summaries(user_id, statement, successfully_added)
 
         # Store rewards summary
         if rewards_data:
             rewards = RewardsSummary(
+                uuid=str(uuid.uuid4()),
+                user_id=user_id,
                 statement_id=statement.id,
                 account_number=statement.account_number,
                 statement_date=statement.statement_date,
@@ -793,6 +812,8 @@ class StatementService:
             self.db.add(rewards)
         elif metadata.get("rewards_opening") is not None:
             rewards = RewardsSummary(
+                uuid=str(uuid.uuid4()),
+                user_id=user_id,
                 statement_id=statement.id,
                 account_number=statement.account_number,
                 statement_date=statement.statement_date,
@@ -837,7 +858,7 @@ class StatementService:
         return statement.id, stats
 
     async def _store_ai_extraction(
-        self, statement_id: int, data: Dict[str, Any], file_hash: Optional[str] = None
+        self, user_id: int, statement_id: int, data: Dict[str, Any], file_hash: Optional[str] = None
     ):
         """
         Link the statement to its AiExtraction cache record (if one exists),
@@ -864,6 +885,8 @@ class StatementService:
 
         # No cache record — create a new audit row (e.g. direct upload path)
         ai_ext = AiExtraction(
+            uuid=str(uuid.uuid4()),
+            user_id=user_id,
             statement_id=statement_id,
             file_hash=file_hash,
             model_used=data.get("model_used", "claude-sonnet-4-5"),
@@ -887,7 +910,7 @@ class StatementService:
         await self.db.delete(stmt)
         await self.db.flush()
 
-    async def _store_category_summaries(self, statement: Statement, transactions: List[Dict]):
+    async def _store_category_summaries(self, user_id: int, statement: Statement, transactions: List[Dict]):
         """Calculate and store category summaries."""
         from app.services.category_engine import CategoryEngine
 
@@ -926,6 +949,8 @@ class StatementService:
             avg = data["total"] / data["count"] if data["count"] > 0 else 0
 
             category_summary = CategorySummary(
+                uuid=str(uuid.uuid4()),
+                user_id=user_id,
                 statement_id=statement.id,
                 account_number=statement.account_number,
                 category_name=category_name,

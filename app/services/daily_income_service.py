@@ -5,6 +5,7 @@ Simpler than expenses: fewer categories, minimal AI processing needed.
 Users log income sources with optional AI enhancement.
 """
 import logging
+import uuid
 from datetime import datetime, date
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
@@ -60,6 +61,7 @@ class DailyIncomeService:
             source_type = "other"
 
         income = DailyIncome(
+            uuid=str(uuid.uuid4()),
             user_id=user_id,
             amount=amount,
             currency=currency,

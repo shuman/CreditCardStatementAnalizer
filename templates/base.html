@@ -130,7 +130,7 @@
                         <i class="fas fa-tachometer-alt text-xs nav-icon"></i>
                         <span>Dashboard</span>
                     </a>
-                    <a href="/" data-nav="/"
+                    <a href="/upload" data-nav="/upload"
                         class="nav-link flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600">
                         <i class="fas fa-cloud-upload-alt text-xs nav-icon"></i>
                         <span>Upload</span>
@@ -178,6 +178,15 @@
                 </nav>
                 {% endif %}
 
+                <!-- Login button (unauthenticated users) -->
+                {% if not user %}
+                <a href="/login"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm">
+                    <i class="fas fa-sign-in-alt text-xs"></i>
+                    <span>Login</span>
+                </a>
+                {% endif %}
+
                 <!-- Mobile hamburger -->
                 {% if user %}
                 <button id="mobileMenuBtn"
@@ -198,7 +207,7 @@
                     class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600">
                     <i class="fas fa-tachometer-alt w-4 text-center nav-icon"></i>Dashboard
                 </a>
-                <a href="/" data-nav="/"
+                <a href="/upload" data-nav="/upload"
                     class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-600">
                     <i class="fas fa-cloud-upload-alt w-4 text-center nav-icon"></i>Upload
                 </a>

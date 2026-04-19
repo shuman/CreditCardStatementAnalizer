@@ -7,6 +7,7 @@ and prepares data for the database writer.
 """
 import re
 import logging
+import uuid
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Optional, Dict, Any, List, Tuple
@@ -137,6 +138,7 @@ class DataNormalizer:
 
     async def normalize(
         self,
+        user_id: int,
         result: ExtractionResult,
         filename: str,
         file_hash: str,
@@ -164,6 +166,7 @@ class DataNormalizer:
 
         for i, section in enumerate(result.all_card_sections):
             account_id, was_existing, auto_registered = await self._resolve_account(
+                user_id,
                 section.card_number_masked,
                 section.cardholder_name,
                 parent_account_id=primary_account_id if i > 0 else None,
@@ -269,6 +272,7 @@ class DataNormalizer:
 
     async def _resolve_account(
         self,
+        user_id: int,
         card_number_masked: str,
         cardholder_name: str = "",
         parent_account_id: Optional[int] = None,
@@ -286,6 +290,7 @@ class DataNormalizer:
 
         result = await self.db.execute(
             select(Account).where(
+                Account.user_id == user_id,
                 Account.account_number_masked.contains(last_four),
                 Account.is_active == True,
             )
@@ -307,6 +312,8 @@ class DataNormalizer:
         nickname = f"{first_name} •••• {last_four}"
 
         new_account = Account(
+            uuid=str(uuid.uuid4()),
+            user_id=user_id,
             institution_id=institution_id,
             account_type="credit_card",
             account_number_masked=card_number_masked,

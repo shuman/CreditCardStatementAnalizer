@@ -11,6 +11,7 @@ Workflow:
 """
 import json
 import logging
+import uuid
 from datetime import datetime, date, time
 from decimal import Decimal
 from typing import List, Optional, Dict, Any, Tuple
@@ -75,6 +76,7 @@ class DailyExpenseService:
             payment_method = "cash"
 
         expense = DailyExpense(
+            uuid=str(uuid.uuid4()),
             user_id=user_id,
             amount=amount,
             currency=currency,
@@ -432,6 +434,7 @@ Rules:
         else:
             # Create new rule
             rule = CategoryRule(
+                uuid=str(uuid.uuid4()),
                 user_id=user_id,
                 merchant_pattern=description[:200],
                 normalized_merchant=normalized,
@@ -497,6 +500,7 @@ Rules:
             rule.updated_at = datetime.utcnow()
         else:
             rule = CategoryRule(
+                uuid=str(uuid.uuid4()),
                 user_id=user_id,
                 merchant_pattern=expense.description_raw[:200],
                 normalized_merchant=normalized,

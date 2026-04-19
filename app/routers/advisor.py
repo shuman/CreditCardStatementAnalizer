@@ -155,9 +155,8 @@ async def get_monthly_report(
             "cached": True,
         }
 
-    # Generate on demand
     advisor = AdvisorService(db)
-    report = await advisor._generate_monthly_report(period_from, period_to, account_id)
+    report = await advisor._generate_monthly_report(current_user.id, period_from, period_to, account_id)
 
     if not report:
         raise HTTPException(
@@ -296,7 +295,7 @@ async def force_generate_report(
     month_names = ["January","February","March","April","May","June",
                    "July","August","September","October","November","December"]
     sig_engine = SignalEngine(db)
-    signals = await sig_engine.compute_all_signals(year, month, account_id, user_id=current_user.id)
+    signals = await sig_engine.compute_all_signals(current_user.id, year, month, account_id)
     if not signals.get("has_data"):
         raise HTTPException(
             status_code=404,
@@ -308,7 +307,7 @@ async def force_generate_report(
 
     advisor = AdvisorService(db)
     report = await advisor.generate_advisor_report(
-        year, month, account_id, force_regenerate=True, user_id=current_user.id
+        current_user.id, year, month, account_id, force_regenerate=True
     )
 
     if not report:

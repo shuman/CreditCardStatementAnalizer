@@ -285,10 +285,20 @@ async def reset_password_page(request: Request):
     return templates.TemplateResponse(request, "reset_password.html", {"title": "Reset Password"})
 
 
-# Protected pages (require login)
+# Landing page (public)
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, db: AsyncSession = Depends(get_db)):
-    """Home page - upload statement (requires login)"""
+    """Landing page - redirect to dashboard if logged in"""
+    user = await require_login(request, db)
+    if user:
+        return RedirectResponse(url="/dashboard", status_code=303)
+    return templates.TemplateResponse(request, "home.html", {"title": "Home"})
+
+
+# Protected pages (require login)
+@app.get("/upload", response_class=HTMLResponse)
+async def upload_page(request: Request, db: AsyncSession = Depends(get_db)):
+    """Upload statement page (requires login)"""
     user = await require_login(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)

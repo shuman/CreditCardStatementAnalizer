@@ -2,6 +2,7 @@
 Accounts router — manage financial institutions and account registry.
 """
 import hashlib
+import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -150,6 +151,7 @@ async def create_account(
         raise HTTPException(status_code=400, detail="Account already registered")
 
     account = Account(
+        uuid=str(uuid.uuid4()),
         user_id=current_user.id,
         institution_id=body.institution_id,
         account_type=body.account_type,

@@ -15,6 +15,7 @@ import json
 import logging
 import re
 import unicodedata
+import uuid
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Tuple, Dict, Any
@@ -651,6 +652,7 @@ Rules:
             rule.updated_at = datetime.utcnow()
         else:
             rule = CategoryRule(
+                uuid=str(uuid.uuid4()),
                 user_id=user_id,
                 merchant_pattern=merchant_pattern[:200],
                 normalized_merchant=normalized[:200],
@@ -690,6 +692,7 @@ Rules:
             rule.updated_at = datetime.utcnow()
         else:
             rule = CategoryRule(
+                uuid=str(uuid.uuid4()),
                 user_id=user_id,
                 merchant_pattern=merchant_pattern[:200],
                 normalized_merchant=normalized[:200],
@@ -768,6 +771,7 @@ async def seed_category_rules(db: AsyncSession, user_id: Optional[int] = None):
             continue  # Already seeded
 
         rule = CategoryRule(
+            uuid=str(uuid.uuid4()),
             user_id=user_id,
             merchant_pattern=merchant,
             normalized_merchant=normalized,
